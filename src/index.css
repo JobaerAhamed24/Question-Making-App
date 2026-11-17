@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Noto Serif Bengali", "Tiro Bangla", "Hind Siliguri", "Outfit", ui-sans-serif, system-ui, serif;
+  --font-sans: "Noto Serif Bengali", "Tiro Bangla", "Hind Siliguri", "Plus Jakarta Sans", ui-sans-serif, system-ui, serif;
+  --font-bangla: "Noto Serif Bengali", "Tiro Bangla", "Hind Siliguri", serif;
+  --font-mono: "JetBrains Mono", "Noto Serif Bengali", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-canvas: #07090C;
+  --color-surface: #0E1117;
+  --color-surface-elevated: #141922;
+  --color-ink: #F3EEE3;
+  --color-ink-muted: #C2C8D3;
+  --color-ink-subtle: #8C95A4;
+  --color-line: rgba(212, 168, 83, 0.25);
+  --color-accent: #D4A853;
+  --color-accent-bright: #EAC779;
+  --color-accent-hover: #C2913B;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-bangla);
+    color: var(--color-ink);
+    background-color: var(--color-canvas);
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-bangla);
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Focus ring standard for keyboard accessibility */
+  :focus-visible {
+    outline: 2px solid #E6C16E;
+    outline-offset: 2px;
+  }
+}
+
+/* Bengali editorial serif typography */
+.font-bangla,
+.font-bangla h1,
+.font-bangla h2,
+.font-bangla h3,
+.font-bangla h4,
+.font-bangla .font-display {
+  font-family: var(--font-bangla);
+}
+
+/* Luxury Obsidian & Brushed Gold Card System */
+.obsidian-card {
+  background: linear-gradient(180deg, rgba(19, 23, 32, 0.94) 0%, rgba(12, 15, 21, 0.98) 100%);
+  border: 1px solid rgba(212, 168, 83, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.obsidian-card-interactive {
+  background: linear-gradient(180deg, rgba(20, 24, 34, 0.94) 0%, rgba(12, 15, 21, 0.98) 100%);
+  border: 1px solid rgba(212, 168, 83, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 28px rgba(0, 0, 0, 0.4);
+  transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.obsidian-card-interactive:hover {
+  border-color: rgba(234, 199, 121, 0.62);
+}
+
+/* Chamfered Architectural Gold Frame (matching reference aesthetic) */
+.obsidian-chamfer {
+  position: relative;
+  background: linear-gradient(180deg, rgba(19, 23, 32, 0.96) 0%, rgba(11, 14, 19, 0.99) 100%);
+  border: 1px solid rgba(212, 168, 83, 0.36);
+  box-shadow:
+    inset 0 1px 0 rgba(234, 199, 121, 0.14),
+    0 16px 36px rgba(0, 0, 0, 0.5);
+}
+
+.gold-btn {
+  background: linear-gradient(135deg, #ECC97B 0%, #D4A74E 55%, #BD8D37 100%);
+  color: #090B0E;
+  font-weight: 700;
+  border: 1px solid rgba(255, 233, 180, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 6px 18px rgba(212, 168, 83, 0.22);
+  transition: filter 160ms ease, transform 160ms ease;
+}
+
+.gold-btn:hover {
+  filter: brightness(1.08);
+}
+
+.gold-outline-btn {
+  background: rgba(15, 19, 27, 0.9);
+  color: #F3EEE3;
+  border: 1px solid rgba(212, 168, 83, 0.42);
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.gold-outline-btn:hover {
+  border-color: rgba(234, 199, 121, 0.8);
+  background: rgba(25, 30, 41, 0.95);
+}
+
+.gold-text-gradient {
+  background: linear-gradient(180deg, #F8E2AF 0%, #D9AA52 60%, #B88632 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Custom utility for balanced headlines without orphans */
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Print / PDF export rules for Question Paper Preview (always crisp ink on white paper) */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 14mm 15mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    color-scheme: light !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-paper-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
