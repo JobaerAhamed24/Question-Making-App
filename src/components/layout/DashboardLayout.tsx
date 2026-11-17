@@ -44,7 +44,7 @@ export function DashboardLayout({
   homePath: string;
   variant?: 'student' | 'admin';
 }) {
-  const { user, logout, quickDemoLogin } = useAuth();
+  const { user, logout } = useAuth();
   const { pushToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -151,40 +151,7 @@ export function DashboardLayout({
         ))}
       </nav>
 
-      {/* Demo Persona Switcher & Sign Out */}
       <div className="border-t border-[#D4A853]/20 p-3 space-y-2.5 bg-[#07090D]">
-        {(!collapsed || isMobile) && (
-          <div className="rounded-lg border border-[#D4A853]/25 bg-[#0E121A] p-2.5">
-            <label
-              htmlFor={isMobile ? 'demo-switch-mobile' : 'demo-switch-desktop'}
-              className="block text-xs font-medium text-[#D4A853]"
-            >
-              ডেমো অ্যাকাউন্ট পরিবর্তন
-            </label>
-            <select
-              id={isMobile ? 'demo-switch-mobile' : 'demo-switch-desktop'}
-              value={user?.id || ''}
-              onChange={async (e) => {
-                const targetId = e.target.value;
-                if (!targetId) return;
-                const switched = await quickDemoLogin(targetId);
-                pushToast({
-                  title: `${switched.fullName} অ্যাকাউন্টে প্রবেশ করেছেন`,
-                  description: switched.role === 'admin' ? 'অ্যাডমিন ড্যাশবোর্ড' : 'শিক্ষার্থী ড্যাশবোর্ড',
-                  variant: 'info',
-                });
-                navigate(switched.role === 'admin' ? '/admin' : '/dashboard');
-                if (isMobile) setMobileOpen(false);
-              }}
-              className="mt-1.5 w-full rounded border border-[#D4A853]/30 bg-[#07090C] px-2 py-1.5 text-sm text-[#F3EEE3] focus:border-[#EAC779] focus:outline-none"
-            >
-              <option value="u-student-active">নাদিয়া (সক্রিয় — ৬ষ্ঠ ও ৮ম শ্রেণি)</option>
-              <option value="u-student-unsub">তানভীর (সাবস্ক্রিপশন নেই / অপেক্ষমাণ)</option>
-              <option value="u-student-expired">ফারহানা (মেয়াদোত্তীর্ণ — ৬ষ্ঠ শ্রেণি)</option>
-              <option value="u-admin">ড. মাহবুব আলম (অ্যাডমিন)</option>
-            </select>
-          </div>
-        )}
         <button
           type="button"
           onClick={handleLogout}

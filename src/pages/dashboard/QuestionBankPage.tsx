@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Bookmark,
@@ -23,6 +24,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { getDifficultyLabelBn, toBanglaDigits } from '../../lib/bn';
 import { questionBankService } from '../../services/questionBankService';
+import { questionService } from '../../services/questionService';
 import type { Question } from '../../types/domain';
 
 const PAGE_SIZE = 6;
@@ -39,12 +41,6 @@ export function QuestionBankPage({
 
   const catalogue = questionBankService.getAcademicCatalogue();
   const permittedClassIds = user ? questionBankService.getUserPermittedClasses(user.id) : [];
-  const allAllowedQuestions = useMemo(
-    () => (user ? questionBankService.listQuestionsForUser(user) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [user, revision]
-  );
-
   const { favoriteIds, savedIds } = useMemo(
     () => (user ? questionBankService.getUserFavoritesAndSaved(user.id) : { favoriteIds: [], savedIds: [] }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -65,13 +61,25 @@ export function QuestionBankPage({
   const [expandedAnswerIds, setExpandedAnswerIds] = useState<Record<string, boolean>>({});
   const [addToPaperTarget, setAddToPaperTarget] = useState<Question | null>(null);
 
-  if (!user) return null;
+  const questionQuery = useQuery({
+    queryKey: ['question-bank', user?.id, mode, classId, groupId, subjectId, chapterId, topicId, typeCode, difficulty, marksFilter, searchText, page, sortBy, favoriteIds.join(','), savedIds.join(',')],
+    enabled: Boolean(user) && (user?.role === 'admin' || permittedClassIds.length > 0),
+    queryFn: async () => mode === 'browse'
+      ? questionService.listPaginatedQuestions({
+          classId, groupId, subjectId, chapterId, topicId, typeCode, difficulty,
+          marks: marksFilter, search: searchText, page, pageSize: PAGE_SIZE, sort: sortBy,
+        })
+      : questionService.listQuestionsByIds(mode === 'favorites' ? favoriteIds : savedIds),
+  });
+  const allAllowedQuestions = mode === 'browse'
+    ? questionQuery.data && 'items' in questionQuery.data ? questionQuery.data.items : []
+    : Array.isArray(questionQuery.data) ? questionQuery.data : [];
 
-  const hasAnyAccess = user.role === 'admin' || permittedClassIds.length > 0;
-  const userPapers = questionBankService.getUserPapers(user.id);
+  const hasAnyAccess = user?.role === 'admin' || permittedClassIds.length > 0;
+  const userPapers = user ? questionBankService.getUserPapers(user.id) : [];
 
   const selectedWrongClass =
-    classId !== 'all' && user.role !== 'admin' && !permittedClassIds.includes(classId);
+    classId !== 'all' && user?.role !== 'admin' && !permittedClassIds.includes(classId);
 
   const baseList = useMemo(() => {
     if (mode === 'favorites') {
@@ -120,9 +128,15 @@ export function QuestionBankPage({
     sortBy,
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / PAGE_SIZE));
+  if (!user) return null;
+
+  const totalPages = mode === 'browse' && questionQuery.data && 'totalPages' in questionQuery.data
+    ? Math.max(1, questionQuery.data.totalPages)
+    : Math.max(1, Math.ceil(filteredQuestions.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const pagedQuestions = filteredQuestions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pagedQuestions = mode === 'browse'
+    ? filteredQuestions
+    : filteredQuestions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const availableSubjects = catalogue.subjects.filter(
     (s) => classId === 'all' || s.classId === classId
@@ -227,6 +241,16 @@ export function QuestionBankPage({
     );
   }
 
+  if (questionQuery.isLoading) {
+    return <Card className="p-8 text-center text-sm text-[#B8C0CE]">প্রশ্নগুলো লোড হচ্ছে…</Card>;
+  }
+  if (questionQuery.isError) {
+    return <EmptyState title="প্রশ্ন লোড করা যায়নি" description={questionQuery.error instanceof Error ? questionQuery.error.message : 'পরে আবার চেষ্টা করুন।'} />;
+  }
+
+  const totalResults = mode === 'browse' && questionQuery.data && 'total' in questionQuery.data
+    ? questionQuery.data.total
+    : filteredQuestions.length;
   const pageHeading =
     mode === 'favorites'
       ? 'পছন্দসই প্রশ্নসমূহ'
@@ -241,7 +265,7 @@ export function QuestionBankPage({
           <h1 className="font-display text-2xl font-bold gold-text-gradient">{pageHeading}</h1>
           <p className="mt-1 text-base text-[#B8C0CE] tabular-nums">
             অনুমোদিত শ্রেণি ({user.role === 'admin' ? 'সকল শ্রেণি' : permittedClassIds.map(getClassName).join(', ')}) থেকে{' '}
-            {toBanglaDigits(filteredQuestions.length)}টি প্রশ্ন প্রদর্শিত হচ্ছে
+            {toBanglaDigits(totalResults)}টি প্রশ্ন পাওয়া গেছে
           </p>
         </div>
         <Link
@@ -703,25 +727,24 @@ export function QuestionDetailPage({ questionId }: { questionId: string }) {
   const { user, bumpRevision } = useAuth();
   const { pushToast } = useToast();
   const catalogue = questionBankService.getAcademicCatalogue();
+  const detailQuery = useQuery({
+    queryKey: ['question-detail', user?.id, questionId],
+    queryFn: () => questionService.getQuestionById(questionId),
+    enabled: Boolean(user),
+  });
 
   if (!user) return null;
-
-  let result: ReturnType<typeof questionBankService.getQuestionByIdForUser>;
-  try {
-    result = questionBankService.getQuestionByIdForUser(questionId, user);
-  } catch {
+  if (detailQuery.isLoading) return <Card className="p-8 text-center text-sm text-[#B8C0CE]">প্রশ্ন লোড হচ্ছে…</Card>;
+  if (detailQuery.isError || !detailQuery.data) {
     return (
-      <EmptyState
-        title="প্রশ্নটি পাওয়া যায়নি"
-        description="অনুরোধকৃত প্রশ্ন আইডিটি খুঁজে পাওয়া যায়নি।"
-        action={
-          <Link to="/dashboard/questions" className="text-base font-medium text-[#EAC779] hover:underline">
-            প্রশ্নব্যাংকে ফিরে যান
-          </Link>
-        }
+      <AccessRestrictedState
+        title="প্রশ্নটি পাওয়া যাচ্ছে না"
+        description="প্রশ্নটি আপনার সক্রিয় সাবস্ক্রিপশনের অন্তর্ভুক্ত নাও হতে পারে, অথবা এটি সরানো হয়েছে।"
+        action={<Link to="/dashboard/payments/new" className="rounded-lg gold-btn px-4 py-2 text-sm font-bold">সাবস্ক্রিপশন দেখুন</Link>}
       />
     );
   }
+  const result = detailQuery.data;
 
   if (!result.hasAccess) {
     const clsName = catalogue.classes.find((c) => c.id === result.question.classId)?.nameBn || 'এই শ্রেণি';

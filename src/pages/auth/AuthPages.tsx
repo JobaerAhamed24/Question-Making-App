@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, Mail } from 'lucide-react';
 import { Button, Card, FormField, Input, Select } from '../../components/ui/Primitives';
 import { useAuth } from '../../contexts/AuthContext';
+import { authService } from '../../services/authService';
 import { useToast } from '../../contexts/ToastContext';
 import {
   forgotPasswordSchema,
@@ -18,7 +19,7 @@ import {
 } from '../../lib/validations';
 
 export function LoginPage() {
-  const { login, quickDemoLogin } = useAuth();
+  const { login } = useAuth();
   const { pushToast } = useToast();
   const navigate = useNavigate();
   const [authError, setAuthError] = useState<string | null>(null);
@@ -42,25 +43,9 @@ export function LoginPage() {
     }
   };
 
-  const handleDemoUser = async (userId: string) => {
-    setAuthError(null);
-    try {
-      const loggedIn = await quickDemoLogin(userId);
-      pushToast({
-        title: `${loggedIn.fullName} হিসেবে লগইন সম্পন্ন`,
-        description: loggedIn.role === 'admin' ? 'অ্যাডমিন ড্যাশবোর্ড' : 'শিক্ষার্থী ড্যাশবোর্ড',
-        variant: 'success',
-      });
-      navigate(loggedIn.role === 'admin' ? '/admin' : '/dashboard');
-    } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'ডেমো লগইন সম্পন্ন করা যায়নি।');
-    }
-  };
-
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 font-bangla">
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        <div className="lg:col-span-6">
+    <div className="mx-auto max-w-md px-4 py-12 sm:px-6 font-bangla">
+      <div>
           <Card className="p-6 sm:p-8">
             <h1 className="font-display text-2xl font-bold gold-text-gradient">প্রশ্নব্যাংকে লগইন করুন</h1>
             <p className="mt-1.5 text-base text-[#B8C0CE]">
@@ -98,58 +83,6 @@ export function LoginPage() {
           </Card>
         </div>
 
-        {/* তাৎক্ষণিক ডেমো অ্যাকাউন্ট প্যানেল */}
-        <div className="lg:col-span-6">
-          <Card className="p-6 sm:p-8">
-            <h2 className="font-display text-lg font-bold text-[#EAC779]">
-              এক ক্লিকে ডেমো অ্যাকাউন্ট ব্যবহার করুন
-            </h2>
-            <p className="mt-1 text-sm text-[#B8C0CE] leading-relaxed">
-              এক ক্লিকেই সকল সাবস্ক্রিপশন নিয়ম এবং ব্যবহারকারীর ভূমিকা পরীক্ষা করে দেখুন।
-            </p>
-
-            <div className="mt-5 space-y-3">
-              {[
-                {
-                  id: 'u-student-active',
-                  name: 'নাদিয়া রহমান — সক্রিয় সাবস্ক্রাইবার',
-                  detail: '৬ষ্ঠ ও ৮ম শ্রেণিতে সক্রিয় (৭ম ও ৯ম–১০ম শ্রেণি অবরুদ্ধ)',
-                  creds: 'nadia@student.demo / demo1234',
-                },
-                {
-                  id: 'u-student-unsub',
-                  name: 'তানভীর হাসান — সাবস্ক্রিপশনবিহীন শিক্ষার্থী',
-                  detail: 'সক্রিয় সাবস্ক্রিপশন নেই · ১টি অপেক্ষমাণ ম্যানুয়াল পেমেন্ট রয়েছে',
-                  creds: 'tanvir@student.demo / demo1234',
-                },
-                {
-                  id: 'u-student-expired',
-                  name: 'ফারহানা আক্তার — মেয়াদোত্তীর্ণ সাবস্ক্রাইবার',
-                  detail: '৬ষ্ঠ শ্রেণির মেয়াদ শেষ · পূর্বের প্রশ্নপত্র দেখা ও ডাউনলোডযোগ্য',
-                  creds: 'farhana@student.demo / demo1234',
-                },
-                {
-                  id: 'u-admin',
-                  name: 'ড. মাহবুব আলম — প্ল্যাটফর্ম অ্যাডমিন',
-                  detail: 'একাডেমিক কাঠামো, প্রশ্ন, প্ল্যান, পেমেন্ট ও ব্যবহারকারী নিয়ন্ত্রণ',
-                  creds: 'admin@questionbank.demo / admin1234',
-                },
-              ].map((demo) => (
-                <button
-                  key={demo.id}
-                  type="button"
-                  onClick={() => handleDemoUser(demo.id)}
-                  className="w-full rounded-lg border border-[#D4A853]/25 bg-[#0A0D12] p-3.5 text-left hover:border-[#EAC779] hover:bg-[#131822] transition-all cursor-pointer"
-                >
-                  <p className="text-base font-semibold text-[#F5EFE2]">{demo.name}</p>
-                  <p className="mt-0.5 text-sm text-[#B8C0CE]">{demo.detail}</p>
-                  <p className="mt-1 font-mono text-xs text-[#D4A853]">{demo.creds}</p>
-                </button>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
     </div>
   );
 }
@@ -183,8 +116,8 @@ export function RegisterPage() {
       });
       setVerificationStepEmail(data.email);
       pushToast({
-        title: 'অ্যাকাউন্ট তৈরি হয়েছে',
-        description: 'ইমেইল যাচাই ধাপ সম্পন্ন হয়েছে। ড্যাশবোর্ডে প্রবেশ করুন।',
+        title: 'যাচাইকরণ ইমেইল পাঠানো হয়েছে',
+        description: 'ইমেইলের লিংক খুলে অ্যাকাউন্ট সক্রিয় করুন।',
         variant: 'success',
       });
     } catch (err) {
@@ -197,12 +130,12 @@ export function RegisterPage() {
       <div className="mx-auto max-w-md px-4 py-16 font-bangla">
         <Card className="p-6 text-center space-y-4">
           <Mail className="mx-auto h-10 w-10 text-[#EAC779]" />
-          <h1 className="font-display text-xl font-bold text-[#F5EFE2]">ইমেইল যাচাইকরণ সম্পন্ন</h1>
+          <h1 className="font-display text-xl font-bold text-[#F5EFE2]">ইমেইল যাচাই করুন</h1>
           <p className="text-base text-[#B8C0CE] leading-relaxed">
-            মূল পরিবেশে <span className="font-medium text-[#EAC779]">{verificationStepEmail}</span> ঠিকানায় একটি যাচাইকরণ লিংক পাঠানো হয়। এই প্রোটোটাইপে আপনার শিক্ষার্থী অ্যাকাউন্ট তাৎক্ষণিকভাবে ব্যবহারের জন্য প্রস্তুত।
+            <span className="font-medium text-[#EAC779]">{verificationStepEmail}</span> ঠিকানায় পাঠানো লিংকটি খুলে অ্যাকাউন্ট সক্রিয় করুন। যাচাই সম্পন্ন হলে আবার লগইন করুন।
           </p>
-          <Button className="w-full" onClick={() => navigate('/dashboard')}>
-            শিক্ষার্থী ড্যাশবোর্ডে যান
+          <Button className="w-full" onClick={() => navigate('/login')}>
+            লগইন পেজে যান
           </Button>
         </Card>
       </div>
@@ -275,47 +208,46 @@ export function RegisterPage() {
 
 export function ForgotPasswordPage() {
   const [sentEmail, setSentEmail] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordSchema),
   });
 
-  const onSubmit = (data: ForgotPasswordFormValues) => {
-    setSentEmail(data.email);
+  const onSubmit = async (data: ForgotPasswordFormValues) => {
+    setFormError(null);
+    try {
+      await authService.forgotPassword(data.email);
+      setSentEmail(data.email);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'রিসেট ইমেইল পাঠানো যায়নি।');
+    }
   };
 
   return (
     <div className="mx-auto max-w-md px-4 py-14 font-bangla">
       <Card className="p-6 sm:p-8">
         <h1 className="font-display text-2xl font-bold gold-text-gradient">পাসওয়ার্ড পুনরুদ্ধার</h1>
+        {formError && <div role="alert" className="mt-4 rounded-lg border border-rose-500/40 bg-rose-950/60 px-3.5 py-2.5 text-sm text-rose-200">{formError}</div>}
         {sentEmail ? (
           <div className="mt-4 space-y-4">
             <div className="flex items-start gap-3 rounded-lg border border-emerald-500/35 bg-emerald-950/50 p-3.5 text-base text-emerald-200">
               <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5 text-emerald-400" />
-              <p>
-                <span className="font-semibold">{sentEmail}</span> ঠিকানার জন্য একটি নমুনা পাসওয়ার্ড রিসেট কোড প্রস্তুত করা হয়েছে।
-              </p>
+              <p>যদি <span className="font-semibold">{sentEmail}</span> ঠিকানায় অ্যাকাউন্ট থাকে, সেখানে পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে।</p>
             </div>
-            <Link
-              to="/reset-password"
-              className="block rounded-lg gold-btn px-4 py-2.5 text-center text-base font-bold"
-            >
-              নতুন পাসওয়ার্ড সেট করুন
-            </Link>
+            <Link to="/login" className="block text-center text-sm font-medium text-[#EAC779] hover:underline">লগইন পেজে ফিরুন</Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-4" noValidate>
-            <p className="text-base text-[#B8C0CE]">
-              পাসওয়ার্ড পুনরুদ্ধার কোড পেতে আপনার নিবন্ধিত ইমেইল ঠিকানা লিখুন।
-            </p>
+            <p className="text-base text-[#B8C0CE]">আপনার নিবন্ধিত ইমেইল ঠিকানায় একটি নিরাপদ রিসেট লিংক পাঠানো হবে।</p>
             <FormField label="ইমেইল ঠিকানা" htmlFor="fp-email" error={errors.email?.message} required>
               <Input id="fp-email" type="email" placeholder="you@example.com" {...register('email')} />
             </FormField>
-            <Button type="submit" className="w-full">
-              রিসেট নির্দেশনা পাঠান
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'পাঠানো হচ্ছে…' : 'রিসেট লিংক পাঠান'}
             </Button>
           </form>
         )}
@@ -327,41 +259,71 @@ export function ForgotPasswordPage() {
 export function ResetPasswordPage() {
   const navigate = useNavigate();
   const { pushToast } = useToast();
+  const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
   });
 
-  const onSubmit = () => {
-    pushToast({
-      title: 'পাসওয়ার্ড হালনাগাদ হয়েছে',
-      description: 'এখন আপনি নতুন পাসওয়ার্ড দিয়ে লগইন করতে পারবেন।',
-      variant: 'success',
-    });
-    navigate('/login');
+  const onSubmit = async (values: ResetPasswordFormValues) => {
+    setFormError(null);
+    try {
+      await authService.resetPassword('', values.password);
+      await authService.logout();
+      pushToast({ title: 'পাসওয়ার্ড হালনাগাদ হয়েছে', description: 'নতুন পাসওয়ার্ড দিয়ে লগইন করুন।', variant: 'success' });
+      navigate('/login');
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'পাসওয়ার্ড হালনাগাদ করা যায়নি।');
+    }
   };
 
   return (
     <div className="mx-auto max-w-md px-4 py-14 font-bangla">
       <Card className="p-6 sm:p-8">
         <h1 className="font-display text-2xl font-bold gold-text-gradient">পাসওয়ার্ড পরিবর্তন</h1>
+        <p className="mt-2 text-sm text-[#B8C0CE]">ইমেইলের নিরাপদ রিসেট লিংক থেকে এই পেজে আসুন।</p>
+        {formError && <div role="alert" className="mt-4 rounded-lg border border-rose-500/40 bg-rose-950/60 px-3.5 py-2.5 text-sm text-rose-200">{formError}</div>}
         <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4" noValidate>
-          <FormField label="যাচাইকরণ কোড" htmlFor="rp-token" error={errors.token?.message} required>
-            <Input id="rp-token" placeholder="৬ সংখ্যার কোড লিখুন (যেমন: 123456)" {...register('token')} />
-          </FormField>
           <FormField label="নতুন পাসওয়ার্ড" htmlFor="rp-pw" error={errors.password?.message} required>
             <Input id="rp-pw" type="password" placeholder="কমপক্ষে ৮ অক্ষর" {...register('password')} />
           </FormField>
           <FormField label="পাসওয়ার্ড নিশ্চিত করুন" htmlFor="rp-cpw" error={errors.confirmPassword?.message} required>
             <Input id="rp-cpw" type="password" placeholder="পুনরায় পাসওয়ার্ড লিখুন" {...register('confirmPassword')} />
           </FormField>
-          <Button type="submit" className="w-full">
-            পাসওয়ার্ড সংরক্ষণ করুন
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? 'সংরক্ষণ হচ্ছে…' : 'পাসওয়ার্ড সংরক্ষণ করুন'}
           </Button>
         </form>
+      </Card>
+    </div>
+  );
+}
+
+export function AuthCallbackPage() {
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void authService.completeAuthCallback().then(async () => {
+      const recovery = new URLSearchParams(window.location.search).get('type') === 'recovery';
+      const { user } = await authService.getSessionUser();
+      if (active) navigate(recovery ? '/reset-password' : user ? '/dashboard' : '/login', { replace: true });
+    }).catch((reason: unknown) => {
+      if (active) setError(reason instanceof Error ? reason.message : 'ইমেইল লিংক যাচাই করা যায়নি।');
+    });
+    return () => { active = false; };
+  }, [navigate]);
+
+  return (
+    <div className="mx-auto max-w-md px-4 py-16 font-bangla text-center">
+      <Card className="p-6">
+        <h1 className="font-display text-xl font-bold text-[#F5EFE2]">ইমেইল লিংক যাচাই হচ্ছে</h1>
+        <p role={error ? 'alert' : undefined} className="mt-3 text-sm text-[#B8C0CE]">{error || 'নিরাপদে সেশন তৈরি করা হচ্ছে…'}</p>
+        {error && <Link to="/login" className="mt-4 inline-block text-sm text-[#EAC779] hover:underline">লগইন পেজে যান</Link>}
       </Card>
     </div>
   );

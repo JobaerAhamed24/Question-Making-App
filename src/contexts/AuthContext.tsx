@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { questionBankService } from '../services/questionBankService';
 import type { UserProfile } from '../types/domain';
+import { supabase } from '../lib/supabaseClient';
 
 interface AuthContextValue {
   user: UserProfile | null;
@@ -8,7 +9,6 @@ interface AuthContextValue {
   revision: number;
   bumpRevision: () => void;
   login: (email: string, password: string) => Promise<UserProfile>;
-  quickDemoLogin: (userId: string) => Promise<UserProfile>;
   register: (input: {
     fullName: string;
     email: string;
@@ -24,7 +24,6 @@ interface AuthContextValue {
     institution?: string;
     preferredLanguage: 'en' | 'bn';
   }) => Promise<UserProfile>;
-  resetDemoData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -40,12 +39,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    console.log('[v0] Auth bootstrap effect mounted');
     questionBankService.setSyncListener(() => {
       setUser(questionBankService.getCurrentUser());
       setRevision((r) => r + 1);
     });
 
     let active = true;
+    const refreshSession = () => {
+      window.setTimeout(() => {
+        questionBankService.hydrateFromServer().then((sessionUser) => {
+          if (!active) return;
+          setUser(sessionUser);
+          setRevision((revision) => revision + 1);
+        }).catch((err) => {
+          console.error('Supabase session refresh failed:', err);
+        });
+      }, 0);
+    };
+    console.log('[v0] Registering Supabase auth listener');
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY') {
+        refreshSession();
+      }
+    });
+
+    console.log('[v0] Starting initial Supabase hydration');
     questionBankService
       .hydrateFromServer()
       .then((sessionUser) => {
@@ -54,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRevision((r) => r + 1);
       })
       .catch((err) => {
-        console.error('Bootstrap hydration failed:', err);
+        console.error('Supabase bootstrap failed:', err);
       })
       .finally(() => {
         if (active) setIsHydrating(false);
@@ -62,19 +81,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       active = false;
+      authListener.subscription.unsubscribe();
       questionBankService.setSyncListener(null);
     };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     const loggedIn = await questionBankService.login(email, password);
-    setUser(loggedIn);
-    setRevision((r) => r + 1);
-    return loggedIn;
-  }, []);
-
-  const quickDemoLogin = useCallback(async (userId: string) => {
-    const loggedIn = await questionBankService.quickDemoLogin(userId);
     setUser(loggedIn);
     setRevision((r) => r + 1);
     return loggedIn;
@@ -90,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: string;
     }) => {
       const created = await questionBankService.register(input);
-      setUser(created);
+      setUser(questionBankService.getCurrentUser());
       setRevision((r) => r + 1);
       return created;
     },
@@ -119,12 +132,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [user]
   );
 
-  const resetDemoData = useCallback(async () => {
-    await questionBankService.resetDemoDatabase();
-    setUser(questionBankService.getCurrentUser());
-    setRevision((r) => r + 1);
-  }, []);
-
   return (
     <AuthContext.Provider
       value={{
@@ -133,11 +140,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         revision,
         bumpRevision,
         login,
-        quickDemoLogin,
         register,
         logout,
         updateProfile,
-        resetDemoData,
       }}
     >
       {children}

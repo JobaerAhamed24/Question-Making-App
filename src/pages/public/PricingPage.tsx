@@ -2,10 +2,15 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { PLAN_TRANSLATIONS_BN, toBanglaDigits } from '../../lib/bn';
+import { useAuth } from '../../contexts/AuthContext';
 import { questionBankService } from '../../services/questionBankService';
 
 export function PricingPage() {
-  const { plans, classes, siteSettings } = questionBankService.getPublicSiteData();
+  const { revision } = useAuth();
+  const { plans, classes, siteSettings } = React.useMemo(
+    () => questionBankService.getPublicSiteData(),
+    [revision]
+  );
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('all');
 
   const filteredPlans =

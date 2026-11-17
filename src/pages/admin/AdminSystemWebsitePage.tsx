@@ -381,8 +381,7 @@ export function AdminWebsitePage() {
 }
 
 export function AdminLogsSettingsPage({ mode }: { mode: 'logs' | 'settings' }) {
-  const { user, revision, resetDemoData } = useAuth();
-  const { pushToast } = useToast();
+  const { user, revision } = useAuth();
 
   const state = useMemo(
     () => (user?.role === 'admin' ? questionBankService.getAdminDashboardSnapshot(user) : null),
@@ -398,26 +397,15 @@ export function AdminLogsSettingsPage({ mode }: { mode: 'logs' | 'settings' }) {
         <Card className="p-5">
           <h1 className="font-display text-2xl font-bold gold-text-gradient">সিস্টেম সেটিংস</h1>
           <p className="mt-1 text-base text-[#B8C0CE]">
-            প্রোটোটাইপ ডাটা সংরক্ষণ ব্যবস্থা ও সিস্টেম কনফিগারেশন পরিচালনা করুন।
+            QuestionBank এখন Supabase Authentication, PostgreSQL, Row Level Security এবং private Storage ব্যবহার করে।
           </p>
         </Card>
 
-        <Card className="p-6 space-y-4">
-          <h2 className="font-display text-lg font-semibold text-[#F5EFE2]">
-            প্রোটোটাইপ ডাটা ও পরিবেশ
-          </h2>
+        <Card className="p-6 space-y-3">
+          <h2 className="font-display text-lg font-semibold text-[#F5EFE2]">ডাটাবেস ও সুরক্ষা</h2>
           <p className="text-sm text-[#B8C0CE] leading-relaxed">
-            এই সিস্টেমটি সকল প্রশ্ন, প্ল্যান, সাবস্ক্রিপশন, পেমেন্ট ও প্রশ্নপত্রের স্ন্যাপশট সার্ভার-সাইড SQLite ডাটাবেসে (<span className="font-mono text-xs text-[#EAC779]">/api/*</span>) সংরক্ষণ করে এবং Supabase প্রোডাকশন মাইগ্রেশন স্কিমার সাথে সামঞ্জস্যপূর্ণ। রিসেট করলে প্রাথমিক ডেমো অবস্থায় ফিরে যাবে।
+            প্রশ্ন, সাবস্ক্রিপশন, পেমেন্ট, ব্যবহারকারী এবং সংরক্ষিত প্রশ্নপত্র Supabase-এ রাখা হয়। শ্রেণিভিত্তিক প্রবেশাধিকার, অ্যাডমিন ভূমিকা এবং ব্যক্তিগত ফাইলের অনুমতি ডাটাবেস নীতিমালায় যাচাই হয়।
           </p>
-          <Button
-            variant="danger"
-            onClick={async () => {
-              await resetDemoData();
-              pushToast({ title: 'ডেমো ডাটাবেস প্রাথমিক অবস্থায় রিসেট হয়েছে', variant: 'info' });
-            }}
-          >
-            ডেমো ডাটাবেস রিসেট করুন
-          </Button>
         </Card>
       </div>
     );
