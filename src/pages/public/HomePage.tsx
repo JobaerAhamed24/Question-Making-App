@@ -19,6 +19,7 @@ import {
   PLAN_TRANSLATIONS_BN,
   toBanglaDigits,
 } from '../../lib/bn';
+import { useAuth } from '../../contexts/AuthContext';
 import { questionBankService } from '../../services/questionBankService';
 
 function SectionDivider({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -39,8 +40,11 @@ function SectionDivider({ title, subtitle }: { title: string; subtitle?: string 
 }
 
 export function HomePage() {
-  const { classes, subjects, plans, faqs, notices, questionTypes } =
-    questionBankService.getPublicSiteData();
+  const { revision } = useAuth();
+  const { classes, subjects, plans, faqs, notices, questionTypes } = React.useMemo(
+    () => questionBankService.getPublicSiteData(),
+    [revision]
+  );
 
   const featuredPlan = plans[plans.length - 1] || plans[0];
   const featuredBn = featuredPlan ? PLAN_TRANSLATIONS_BN[featuredPlan.id] : undefined;

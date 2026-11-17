@@ -26,6 +26,7 @@ import { AccessRestrictedState } from './components/ui/Primitives';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import {
+  AuthCallbackPage,
   ForgotPasswordPage,
   LoginPage,
   RegisterPage,
@@ -166,6 +167,7 @@ export default function App() {
                 <Route path="/contact" element={<ContactPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/auth/callback" element={<AuthCallbackPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
               </Route>

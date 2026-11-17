@@ -1,116 +1,153 @@
-// Supabase Edge Function: submit-payment
-// Validates plan & payment method server-side, prevents duplicate transaction references,
-// creates a pending manual payment record without ever letting client specify status or expected price.
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json',
 };
+
+function respond(status: number, body: Record<string, unknown>) {
+  return new Response(JSON.stringify(body), { status, headers: corsHeaders });
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') return respond(405, { error: 'Method not allowed' });
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Authentication required' }), { status: 401, headers: corsHeaders });
-    }
+    const authorization = req.headers.get('Authorization');
+    if (!authorization) return respond(401, { error: 'Authentication required' });
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+      console.error('Payment function is missing Supabase configuration');
+      return respond(500, { error: 'Payment service is unavailable' });
+    }
 
     const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
+      global: { headers: { Authorization: authorization } },
+      auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data: authData, error: authErr } = await userClient.auth.getUser();
-    if (authErr || !authData.user) {
-      return new Response(JSON.stringify({ error: 'Invalid session token' }), { status: 401, headers: corsHeaders });
+    const { data: authData, error: authError } = await userClient.auth.getUser();
+    if (authError || !authData.user) return respond(401, { error: 'Invalid session' });
+
+    const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).byteLength > 12 * 1024) return respond(413, { error: 'Request is too large' });
+    const body: unknown = JSON.parse(rawBody);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return respond(400, { error: 'Invalid request' });
+
+    const input = body as Record<string, unknown>;
+    const { planId, paymentMethodId, senderNumber, transactionRef, submittedAmountBdt, receiptStoragePath, receiptFileName, receiptMimeType } = input;
+    if (typeof planId !== 'string' || planId.length < 1 || planId.length > 100 ||
+        typeof paymentMethodId !== 'string' || paymentMethodId.length < 1 || paymentMethodId.length > 100) {
+      return respond(400, { error: 'Select a valid plan and payment method' });
+    }
+    if (typeof senderNumber !== 'string' || !/^[0-9+()\-\s]{7,24}$/.test(senderNumber.trim())) {
+      return respond(400, { error: 'Enter a valid sender number' });
+    }
+    if (typeof transactionRef !== 'string' || !/^[A-Za-z0-9-]{4,64}$/.test(transactionRef.trim())) {
+      return respond(400, { error: 'Enter a valid transaction reference' });
+    }
+    if (typeof submittedAmountBdt !== 'number' || !Number.isSafeInteger(submittedAmountBdt) || submittedAmountBdt < 1 || submittedAmountBdt > 10_000_000) {
+      return respond(400, { error: 'Enter a valid payment amount' });
     }
 
-    const body = await req.json();
-    const { planId, paymentMethodId, senderNumber, transactionRef, submittedAmountBdt, receiptStoragePath, receiptFileName } = body;
-
-    if (!planId || !paymentMethodId || !senderNumber || !transactionRef || !Number(submittedAmountBdt)) {
-      return new Response(JSON.stringify({ error: 'Incomplete payment details' }), { status: 400, headers: corsHeaders });
+    const hasReceipt = receiptStoragePath !== undefined || receiptFileName !== undefined || receiptMimeType !== undefined;
+    if (hasReceipt) {
+      const safeFileName = typeof receiptFileName === 'string' && /^[A-Za-z0-9._-]{1,100}$/.test(receiptFileName);
+      const ownedPath = typeof receiptStoragePath === 'string' &&
+        receiptStoragePath.startsWith(`${authData.user.id}/`) &&
+        receiptStoragePath.length <= 220 && !receiptStoragePath.includes('..');
+      const safeMimeType = typeof receiptMimeType === 'string' &&
+        ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'].includes(receiptMimeType);
+      if (!safeFileName || !ownedPath || !safeMimeType) return respond(400, { error: 'Receipt details are invalid' });
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-    const { data: plan, error: planErr } = await adminClient
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: plan, error: planError } = await adminClient
       .from('plans')
-      .select('*')
+      .select('id, name, name_bn, price_bdt')
       .eq('id', planId)
       .eq('is_active', true)
-      .single();
-    if (planErr || !plan) {
-      return new Response(JSON.stringify({ error: 'Selected plan is unavailable or inactive' }), { status: 400, headers: corsHeaders });
-    }
+      .maybeSingle();
+    if (planError || !plan) return respond(400, { error: 'Selected plan is unavailable' });
 
-    const { data: method, error: methodErr } = await adminClient
+    const { data: method, error: methodError } = await adminClient
       .from('payment_methods')
-      .select('*')
+      .select('id, name, is_active')
       .eq('id', paymentMethodId)
       .eq('is_active', true)
-      .single();
-    if (methodErr || !method) {
-      return new Response(JSON.stringify({ error: 'Selected payment method is invalid' }), { status: 400, headers: corsHeaders });
+      .maybeSingle();
+    if (methodError || !method) return respond(400, { error: 'Selected payment method is unavailable' });
+
+    const expectedAmount = Number(plan.price_bdt);
+    if (!Number.isSafeInteger(expectedAmount) || submittedAmountBdt !== expectedAmount) {
+      return respond(400, { error: 'Submitted amount does not match the selected plan' });
     }
 
-    const normalizedRef = String(transactionRef).trim().toUpperCase();
-    const { data: dupes } = await adminClient
+    const normalizedRef = transactionRef.trim().toUpperCase();
+    const { data: duplicate, error: duplicateError } = await adminClient
       .from('payments')
-      .select('id, status')
-      .eq('payment_method_id', paymentMethodId)
+      .select('id')
+      .eq('payment_method_id', method.id)
+      .eq('transaction_ref', normalizedRef)
       .neq('status', 'rejected')
-      .ilike('transaction_ref', normalizedRef);
-
-    if (dupes && dupes.length > 0) {
-      return new Response(JSON.stringify({ error: 'Duplicate transaction reference for this payment method' }), { status: 409, headers: corsHeaders });
+      .limit(1);
+    if (duplicateError) {
+      console.error('Payment duplicate check failed', duplicateError);
+      return respond(500, { error: 'Unable to validate this payment' });
     }
+    if (duplicate?.length) return respond(409, { error: 'This transaction reference was already submitted' });
 
-    const paymentId = `pay-${crypto.randomUUID().slice(0, 12)}`;
-    const { data: created, error: insertErr } = await adminClient
+    const paymentId = `pay-${crypto.randomUUID()}`;
+    const { data: created, error: insertError } = await adminClient
       .from('payments')
       .insert({
         id: paymentId,
         user_id: authData.user.id,
         plan_id: plan.id,
         plan_name_snapshot: plan.name_bn || plan.name,
-        expected_amount_bdt: plan.price_bdt,
-        submitted_amount_bdt: Number(submittedAmountBdt),
+        expected_amount_bdt: expectedAmount,
+        submitted_amount_bdt: submittedAmountBdt,
         payment_method_id: method.id,
         payment_method_name_snapshot: method.name,
-        sender_number: String(senderNumber).trim(),
+        sender_number: senderNumber.trim(),
         transaction_ref: normalizedRef,
         status: 'pending',
       })
-      .select()
+      .select('id, user_id, plan_id, plan_name_snapshot, expected_amount_bdt, submitted_amount_bdt, payment_method_id, payment_method_name_snapshot, sender_number, transaction_ref, status, reviewed_by_admin_id, reviewed_at, review_note, created_at')
       .single();
-
-    if (insertErr) {
-      return new Response(JSON.stringify({ error: insertErr.message }), { status: 400, headers: corsHeaders });
+    if (insertError || !created) {
+      if (insertError?.code === '23505') return respond(409, { error: 'This transaction reference was already submitted' });
+      console.error('Payment insert failed', insertError);
+      return respond(500, { error: 'Unable to submit payment right now' });
     }
 
-    if (receiptStoragePath && receiptFileName) {
-      await adminClient.from('payment_receipts').insert({
+    if (hasReceipt) {
+      const { error: receiptError } = await adminClient.from('payment_receipts').insert({
         payment_id: paymentId,
         user_id: authData.user.id,
         storage_path: receiptStoragePath,
         file_name: receiptFileName,
+        mime_type: receiptMimeType,
       });
+      if (receiptError) {
+        await adminClient.from('payments').delete().eq('id', paymentId).eq('user_id', authData.user.id);
+        await adminClient.storage.from('payment-receipts').remove([receiptStoragePath as string]);
+        console.error('Payment receipt metadata insert failed', receiptError);
+        return respond(500, { error: 'Unable to attach receipt to payment' });
+      }
+      created.payment_receipts = { file_name: receiptFileName, storage_path: receiptStoragePath, mime_type: receiptMimeType };
     }
 
-    return new Response(JSON.stringify({ payment: created }), {
-      status: 201,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : 'Internal error' }), {
-      status: 500,
-      headers: corsHeaders,
-    });
+    return respond(201, { payment: created });
+  } catch (error) {
+    console.error('Payment submission failed', error);
+    return respond(400, { error: 'Invalid payment request' });
   }
 });

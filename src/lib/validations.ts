@@ -30,7 +30,6 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z
   .object({
-    token: z.string().trim().min(4, 'যাচাইকরণ কোড প্রয়োজন।'),
     password: z.string().min(8, 'পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।'),
     confirmPassword: z.string(),
   })

@@ -1,4 +1,4 @@
-import { createSeedDatabase, type AppDatabaseState } from '../data/seedData';
+import type { AppDatabaseState } from '../data/seedData';
 import {
   canUserAccessQuestion,
   canUserAddQuestionToPaper,
@@ -30,7 +30,8 @@ import type {
 } from '../types/domain';
 import { academicService } from './academicService';
 import { adminService } from './adminService';
-import { apiRequest } from './apiClient';
+import { questionService } from './questionService';
+import { subscriptionService } from './subscriptionService';
 import { authService } from './authService';
 import { favoriteService } from './favoriteService';
 import { paperService, type GenerateCustomPaperInput } from './paperService';
@@ -68,38 +69,20 @@ interface BootstrapPayload {
   adminSnapshot: Omit<AppDatabaseState, 'passwordsByUserId'> | null;
 }
 
-// Initial safe public-only structure before first /api/bootstrap response arrives
 function createInitialEmptyPublicStore(): BootstrapPayload {
-  const seed = createSeedDatabase();
+  const emptySettings: SiteSettings = {
+    brandName: 'প্রশ্নঘর', heroHeadline: '', heroSubheadline: '', supportEmail: '', supportPhone: '',
+    officeAddress: '', renewalRuleNotice: '', demoDisclaimer: '',
+  };
   return {
     user: null,
-    academic: {
-      classes: seed.classes,
-      groups: seed.groups,
-      subjects: seed.subjects,
-      chapters: seed.chapters,
-      topics: seed.topics,
-      questionTypes: seed.questionTypes,
-    },
+    academic: { classes: [], groups: [], subjects: [], chapters: [], topics: [], questionTypes: [] },
     publicData: {
-      siteSettings: seed.siteSettings,
-      classes: seed.classes.filter((c) => c.isActive),
-      subjects: seed.subjects.filter((s) => s.isActive),
-      plans: seed.plans.filter((p) => p.isActive),
-      faqs: seed.faqs.filter((f) => f.isPublished),
-      notices: seed.notices.filter((n) => n.isPublished),
-      paymentMethods: seed.paymentMethods.filter((pm) => pm.isActive),
-      questionTypes: seed.questionTypes.filter((qt) => qt.isActive),
+      siteSettings: emptySettings, classes: [], subjects: [], plans: [], faqs: [], notices: [],
+      paymentMethods: [], questionTypes: [],
     },
-    subscriptions: [],
-    permittedClassIds: [],
-    questions: [],
-    favorites: [],
-    saved: [],
-    papers: [],
-    exports: [],
-    payments: [],
-    adminSnapshot: null,
+    subscriptions: [], permittedClassIds: [], questions: [], favorites: [], saved: [], papers: [],
+    exports: [], payments: [], adminSnapshot: null,
   };
 }
 
@@ -128,26 +111,62 @@ function runWriteThrough(fn: () => Promise<unknown>): void {
     .then(() => notifySync())
     .catch((err) => {
       console.error('Backend sync failed:', err);
-      // Re-hydrate from authoritative server state so UI never drifts from SQLite
+      // Re-hydrate from Supabase so local UI state stays aligned with persisted data.
       questionBankService.hydrateFromServer().then(() => notifySync()).catch(() => undefined);
     });
 }
 
-/**
- * Backend-integrated QuestionBank service facade.
- * Authoritative state lives in Express + SQLite (/api/*), mirrored cleanly into reactive memory
- * via /api/bootstrap so synchronous React views stay responsive while every mutation persists server-side.
- */
 export const questionBankService = {
   setSyncListener(listener: (() => void) | null): void {
     syncListener = listener;
   },
 
   async hydrateFromServer(): Promise<UserProfile | null> {
-    const data = await apiRequest<BootstrapPayload>('/bootstrap');
-    store = data;
-    return data.user;
+    console.log('[v0] Supabase hydration started');
+    const [{ user }, academic, publicData] = await Promise.all([
+      authService.getSessionUser(),
+      academicService.getAcademicCatalogue(),
+      academicService.getPublicSiteData(),
+    ]);
+    console.log('[v0] Supabase catalogue hydrated', {
+      classes: academic.classes.length,
+      questionTypes: academic.questionTypes.length,
+      plans: publicData.plans.length,
+    });
+    if (!user) {
+      store = { ...createInitialEmptyPublicStore(), academic, publicData };
+      return null;
+    }
+
+    const [subscriptionsPayload, collections, papersPayload, exportsPayload, paymentsPayload, questionsPayload, adminSnapshot] = await Promise.all([
+      subscriptionService.getMySubscriptions(),
+      favoriteService.getCollections(),
+      paperService.listMyPapers(),
+      paperService.listMyExports(),
+      paymentService.getMyPayments(),
+      questionService.listPaginatedQuestions({ page: 1, pageSize: 100 }),
+      user.role === 'admin' ? adminService.getSnapshot() : Promise.resolve(null),
+    ]);
+    const permittedClassIds = user.role === 'admin'
+      ? academic.classes.map((item) => item.id)
+      : getUserPermittedClassIds(subscriptionsPayload.subscriptions, user.id);
+    store = {
+      user,
+      academic,
+      publicData,
+      subscriptions: subscriptionsPayload.subscriptions,
+      permittedClassIds,
+      questions: questionsPayload.items,
+      favorites: collections.favoriteIds,
+      saved: collections.savedIds,
+      papers: papersPayload.papers,
+      exports: exportsPayload.exports,
+      payments: paymentsPayload.payments,
+      adminSnapshot,
+    };
+    return user;
   },
+
 
   // --- Session & Auth ---
   getCurrentUser(): UserProfile | null {
@@ -156,13 +175,6 @@ export const questionBankService = {
 
   async login(email: string, password: string): Promise<UserProfile> {
     const { user } = await authService.login(email, password);
-    await this.hydrateFromServer();
-    notifySync();
-    return user;
-  },
-
-  async quickDemoLogin(userId: string): Promise<UserProfile> {
-    const { user } = await authService.quickDemoLogin(userId);
     await this.hydrateFromServer();
     notifySync();
     return user;
@@ -196,12 +208,6 @@ export const questionBankService = {
     store.user = user;
     notifySync();
     return user;
-  },
-
-  async resetDemoDatabase(): Promise<void> {
-    await apiRequest('/demo/reset', { method: 'POST' });
-    await this.hydrateFromServer();
-    notifySync();
   },
 
   // --- Public Catalogue & CMS Data ---

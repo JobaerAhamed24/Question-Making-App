@@ -4,13 +4,18 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, ChevronDown } from 'lucide-react';
 import { Button, Card, FormField, Input, Textarea } from '../../components/ui/Primitives';
+import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { FAQ_TRANSLATIONS_BN, toBanglaDigits } from '../../lib/bn';
 import { contactSchema, type ContactFormValues } from '../../lib/validations';
 import { questionBankService } from '../../services/questionBankService';
 
 export function AboutPage() {
-  const { classes, subjects, questionTypes } = questionBankService.getPublicSiteData();
+  const { revision } = useAuth();
+  const { classes, subjects, questionTypes } = React.useMemo(
+    () => questionBankService.getPublicSiteData(),
+    [revision]
+  );
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 space-y-10 font-bangla">
       <div>
@@ -119,7 +124,11 @@ export function HowItWorksPage() {
 }
 
 export function PaymentInstructionsPage() {
-  const { paymentMethods, siteSettings } = questionBankService.getPublicSiteData();
+  const { revision } = useAuth();
+  const { paymentMethods, siteSettings } = React.useMemo(
+    () => questionBankService.getPublicSiteData(),
+    [revision]
+  );
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 space-y-8 font-bangla">
@@ -158,7 +167,8 @@ export function PaymentInstructionsPage() {
 }
 
 export function FaqPage() {
-  const { faqs } = questionBankService.getPublicSiteData();
+  const { revision } = useAuth();
+  const { faqs } = React.useMemo(() => questionBankService.getPublicSiteData(), [revision]);
   const [openId, setOpenId] = useState<string | null>(faqs[0]?.id || null);
 
   return (
@@ -206,7 +216,8 @@ export function FaqPage() {
 }
 
 export function ContactPage() {
-  const { siteSettings } = questionBankService.getPublicSiteData();
+  const { revision } = useAuth();
+  const { siteSettings } = React.useMemo(() => questionBankService.getPublicSiteData(), [revision]);
   const { pushToast } = useToast();
   const [submitted, setSubmitted] = useState(false);
 

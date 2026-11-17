@@ -1,6 +1,5 @@
 export { academicService } from './academicService';
 export { adminService } from './adminService';
-export { ApiError, apiRequest } from './apiClient';
 export { authService } from './authService';
 export { favoriteService } from './favoriteService';
 export { paperService } from './paperService';
