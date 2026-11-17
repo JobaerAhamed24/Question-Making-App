@@ -21,7 +21,7 @@ export async function createAppServer() {
   app.use(express.json({ limit: '12mb' }));
   app.use(express.urlencoded({ extended: true, limit: '12mb' }));
 
-  app.use('/api', createApiRouter(db, { realtimeHub, supabaseBridge }));
+  app.use('/api', createApiRouter(db));
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
