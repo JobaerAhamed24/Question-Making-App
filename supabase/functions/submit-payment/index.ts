@@ -69,6 +69,21 @@ Deno.serve(async (req) => {
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    const { data: approvedPayment, error: approvedPaymentError } = await adminClient
+      .from('payments')
+      .select('id')
+      .eq('user_id', authData.user.id)
+      .eq('status', 'approved')
+      .limit(1)
+      .maybeSingle();
+    if (approvedPaymentError) {
+      console.error('Approved payment lookup failed', approvedPaymentError);
+      return respond(500, { error: 'Unable to validate this payment' });
+    }
+    if (approvedPayment) {
+      return respond(409, { error: 'You have already made an approved payment' });
+    }
+
     const { data: plan, error: planError } = await adminClient
       .from('plans')
       .select('id, name, name_bn, price_bdt')

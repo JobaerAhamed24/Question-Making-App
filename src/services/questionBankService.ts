@@ -467,7 +467,7 @@ export const questionBankService = {
     return store.payments;
   },
 
-  submitManualPayment(
+  async submitManualPayment(
     user: UserProfile,
     input: {
       planId: string;
@@ -478,7 +478,7 @@ export const questionBankService = {
       receiptDataUrl?: string;
       receiptFileName?: string;
     }
-  ): Payment {
+  ): Promise<Payment> {
     const plan = store.publicData.plans.find((p) => p.id === input.planId && p.isActive);
     if (!plan) throw new Error('নির্বাচিত সাবস্ক্রিপশন প্ল্যানটি সক্রিয় নয়।');
 
@@ -487,29 +487,17 @@ export const questionBankService = {
     );
     if (!method) throw new Error('নির্বাচিত পেমেন্ট মাধ্যমটি পাওয়া যায়নি।');
 
+    if (store.payments.some((payment) => payment.userId === user.id && payment.status === 'approved')) {
+      throw new Error('আপনি ইতিমধ্যে একবার পেমেন্ট করেছেন। এই অ্যাকাউন্ট থেকে আর পেমেন্ট করা যাবে না।');
+    }
+
     if (isDuplicateTransactionRef(store.payments, method.id, input.transactionRef)) {
       throw new Error('এই পেমেন্ট মাধ্যমে এই ট্রানজেকশন আইডি ইতিমধ্যেই জমা দেওয়া হয়েছে।');
     }
 
-    const payment: Payment = {
-      id: uid('pay'),
-      userId: user.id,
-      planId: plan.id,
-      planNameSnapshot: plan.nameBn || plan.name,
-      expectedAmountBdt: plan.priceBdt,
-      submittedAmountBdt: Number(input.submittedAmountBdt),
-      paymentMethodId: method.id,
-      paymentMethodNameSnapshot: method.name,
-      senderNumber: input.senderNumber.trim(),
-      transactionRef: input.transactionRef.trim().toUpperCase(),
-      receiptDataUrl: input.receiptDataUrl,
-      receiptFileName: input.receiptFileName,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
-
-    store.payments = [payment, ...store.payments];
-    runWriteThrough(() => paymentService.submitManualPayment(input));
+    const { payment } = await paymentService.submitManualPayment(input);
+    await this.hydrateFromServer();
+    notifySync();
     return payment;
   },
 

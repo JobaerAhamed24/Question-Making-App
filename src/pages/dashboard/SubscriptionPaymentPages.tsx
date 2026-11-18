@@ -23,6 +23,10 @@ export function SubscriptionPage() {
   const { user, revision } = useAuth();
   const catalogue = questionBankService.getAcademicCatalogue();
   const { siteSettings } = questionBankService.getPublicSiteData();
+  const hasApprovedPayment = useMemo(
+    () => user ? questionBankService.getUserPayments(user.id).some((payment) => payment.status === 'approved') : false,
+    [user, revision]
+  );
 
   const subscriptions = useMemo(
     () => (user ? questionBankService.getUserSubscriptions(user.id) : []),
@@ -44,13 +48,19 @@ export function SubscriptionPage() {
             শ্রেণি-ভিত্তিক প্রবেশাধিকার কেনার সময় নির্ধারিত হয় এবং অ্যাডমিন পেমেন্ট যাচাইয়ের পর সক্রিয় হয়।
           </p>
         </div>
-        <Link
-          to="/dashboard/payments/new"
-          className="inline-flex items-center gap-2 rounded-lg gold-btn px-4 py-2 text-sm font-bold whitespace-nowrap self-start"
-        >
-          <CreditCard className="h-4 w-4" />
-          <span>{activeSubs.length > 0 ? 'নবায়ন / নতুন প্ল্যান যোগ করুন' : 'এখনই সাবস্ক্রাইব করুন'}</span>
-        </Link>
+        {hasApprovedPayment ? (
+          <p role="status" className="self-start rounded-lg border border-[#D4A853]/30 bg-[#2A200E]/40 px-3 py-2 text-sm text-[#EAC779]">
+            আপনার পেমেন্ট অনুমোদিত হয়েছে; এই অ্যাকাউন্ট থেকে আর পেমেন্ট করা যাবে না।
+          </p>
+        ) : (
+          <Link
+            to="/dashboard/payments/new"
+            className="inline-flex items-center gap-2 rounded-lg gold-btn px-4 py-2 text-sm font-bold whitespace-nowrap self-start"
+          >
+            <CreditCard className="h-4 w-4" />
+            <span>{activeSubs.length > 0 ? 'নবায়ন / নতুন প্ল্যান যোগ করুন' : 'এখনই সাবস্ক্রাইব করুন'}</span>
+          </Link>
+        )}
       </Card>
 
       {/* নীতিমালা সারসংক্ষেপ */}
@@ -69,14 +79,14 @@ export function SubscriptionPage() {
           title="কোনো সাবস্ক্রিপশন পাওয়া যায়নি"
           description="একটি শ্রেণি প্ল্যান বেছে নিয়ে ম্যানুয়াল পেমেন্ট তথ্য জমা দিন এবং আপনার অ্যাকাউন্ট সক্রিয় করুন।"
           icon={<CreditCard className="h-5 w-5" />}
-          action={
+          action={hasApprovedPayment ? undefined : (
             <Link
               to="/dashboard/payments/new"
               className="rounded-lg gold-btn px-4 py-2 text-sm font-bold"
             >
               প্ল্যান দেখুন ও পেমেন্ট করুন
             </Link>
-          }
+          )}
         />
       ) : (
         <Card className="overflow-x-auto">
@@ -136,6 +146,7 @@ export function PaymentHistoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [user, revision]
   );
+  const hasApprovedPayment = payments.some((payment) => payment.status === 'approved');
 
   if (!user) return null;
 
@@ -148,13 +159,15 @@ export function PaymentHistoryPage() {
             আপনার জমাকৃত ম্যানুয়াল পেমেন্ট, ট্রানজেকশন রেফারেন্স এবং অ্যাডমিনের পর্যালোচনা মন্তব্য দেখুন।
           </p>
         </div>
-        <Link
-          to="/dashboard/payments/new"
-          className="inline-flex items-center gap-2 rounded-lg gold-btn px-4 py-2 text-sm font-bold whitespace-nowrap self-start"
-        >
-          <CreditCard className="h-4 w-4" />
-          <span>ম্যানুয়াল পেমেন্ট জমা দিন</span>
-        </Link>
+        {!hasApprovedPayment && (
+          <Link
+            to="/dashboard/payments/new"
+            className="inline-flex items-center gap-2 rounded-lg gold-btn px-4 py-2 text-sm font-bold whitespace-nowrap self-start"
+          >
+            <CreditCard className="h-4 w-4" />
+            <span>ম্যানুয়াল পেমেন্ট জমা দিন</span>
+          </Link>
+        )}
       </Card>
 
       {payments.length === 0 ? (
@@ -163,12 +176,14 @@ export function PaymentHistoryPage() {
           description="একটি সাবস্ক্রিপশন প্ল্যান বেছে নিয়ে আপনার বিকাশ, নগদ বা ব্যাংক ট্রান্সফার ট্রানজেকশন আইডি জমা দিন।"
           icon={<CreditCard className="h-5 w-5" />}
           action={
-            <Link
-              to="/dashboard/payments/new"
-              className="rounded-lg gold-btn px-4 py-2 text-sm font-bold"
-            >
-              পেমেন্ট জমা দিন
-            </Link>
+            hasApprovedPayment ? undefined : (
+              <Link
+                to="/dashboard/payments/new"
+                className="rounded-lg gold-btn px-4 py-2 text-sm font-bold"
+              >
+                পেমেন্ট জমা দিন
+              </Link>
+            )
           }
         />
       ) : (
@@ -228,12 +243,16 @@ export function PaymentHistoryPage() {
 }
 
 export function NewManualPaymentPage() {
-  const { user, bumpRevision } = useAuth();
+  const { user, revision, bumpRevision } = useAuth();
   const { pushToast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const { plans, paymentMethods, classes, siteSettings } = questionBankService.getPublicSiteData();
+  const hasApprovedPayment = useMemo(
+    () => user ? questionBankService.getUserPayments(user.id).some((payment) => payment.status === 'approved') : false,
+    [user, revision]
+  );
   const [receiptDataUrl, setReceiptDataUrl] = useState<string | undefined>();
   const [receiptFileName, setReceiptFileName] = useState<string | undefined>();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -261,6 +280,24 @@ export function NewManualPaymentPage() {
 
   if (!user) return null;
 
+  if (hasApprovedPayment) {
+    return (
+      <div className="max-w-xl mx-auto py-8 font-bangla">
+        <Card className="space-y-4 p-6 text-center">
+          <CheckCircle2 className="mx-auto h-10 w-10 text-[#EAC779]" />
+          <h1 className="font-display text-xl font-bold text-[#F5EFE2]">আপনার পেমেন্ট ইতিমধ্যে অনুমোদিত</h1>
+          <p className="text-base leading-relaxed text-[#B8C0CE]">
+            একটি অ্যাকাউন্টে একবার পেমেন্ট করা যাবে। আপনার পেমেন্ট ইতিহাসে অনুমোদনের তথ্য দেখতে পারেন।
+          </p>
+          <div className="flex flex-wrap justify-center gap-3 pt-2">
+            <Button onClick={() => navigate('/dashboard/payments')}>পেমেন্ট ইতিহাস দেখুন</Button>
+            <Button variant="outline" onClick={() => navigate('/dashboard')}>ড্যাশবোর্ডে ফিরুন</Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   const selectedPlanId = watch('planId');
   const selectedMethodId = watch('paymentMethodId');
   const selectedPlan = plans.find((p) => p.id === selectedPlanId);
@@ -280,10 +317,10 @@ export function NewManualPaymentPage() {
     reader.readAsDataURL(file);
   };
 
-  const onSubmit = (data: ManualPaymentFormValues) => {
+  const onSubmit = async (data: ManualPaymentFormValues) => {
     setSubmitError(null);
     try {
-      questionBankService.submitManualPayment(user, {
+      await questionBankService.submitManualPayment(user, {
         planId: data.planId,
         paymentMethodId: data.paymentMethodId,
         senderNumber: data.senderNumber,
