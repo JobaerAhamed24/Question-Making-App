@@ -67,7 +67,22 @@ export const paymentService = {
         receiptMimeType,
       },
     });
-    if (error) throw error;
+    if (error) {
+      const response = 'context' in error && error.context instanceof Response ? error.context.clone() : null;
+      if (response && receiptStoragePath) {
+        await supabase.storage.from('payment-receipts').remove([receiptStoragePath]);
+      }
+      const details = response
+        ? (await response.json().catch(() => null)) as { error?: string } | null
+        : null;
+      if (details?.error === 'You have already made an approved payment') {
+        throw new Error('আপনি ইতিমধ্যে একবার পেমেন্ট করেছেন। এই অ্যাকাউন্ট থেকে আর পেমেন্ট করা যাবে না।');
+      }
+      if (details?.error === 'This transaction reference was already submitted') {
+        throw new Error('এই পেমেন্ট মাধ্যমে এই ট্রানজেকশন আইডি ইতিমধ্যেই জমা দেওয়া হয়েছে।');
+      }
+      throw new Error('পেমেন্ট জমা দেওয়া যায়নি। আবার চেষ্টা করুন।');
+    }
     if (!data?.payment) throw new Error('পেমেন্ট জমা দেওয়া যায়নি।');
     return { payment: mapPayment(data.payment) };
   },
