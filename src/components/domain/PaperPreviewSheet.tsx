@@ -55,9 +55,11 @@ export function PaperPreviewSheet({
             <span className="font-medium text-slate-700 whitespace-nowrap">রোল / আইডি:</span>
             <span className="flex-1 border-b border-dotted border-slate-500 h-3" />
           </div>
-          <div className="sm:col-span-3 sm:text-right tabular-nums whitespace-nowrap">
-            <span className="font-medium text-slate-700">তারিখ:</span> {toBanglaDigits(paper.examDate)}
-          </div>
+          {paper.examDate && (
+            <div className="sm:col-span-3 sm:text-right tabular-nums whitespace-nowrap">
+              <span className="font-medium text-slate-700">তারিখ:</span> {toBanglaDigits(paper.examDate)}
+            </div>
+          )}
         </div>
       )}
 

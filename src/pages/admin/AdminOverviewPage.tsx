@@ -5,9 +5,12 @@ import {
   BookOpen,
   CheckCircle2,
   CreditCard,
+  Gamepad2,
   Globe,
   GraduationCap,
   Layers,
+  Library,
+  Palette,
   Plus,
   ShieldCheck,
   XCircle,
@@ -25,6 +28,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { formatBnDateTime, formatBnNumber, toBanglaDigits } from '../../lib/bn';
 import { isSubscriptionCurrentlyActive } from '../../lib/rules';
+import { platformService } from '../../services/platformService';
 import { questionBankService } from '../../services/questionBankService';
 import type { Payment, QuestionTypeCode } from '../../types/domain';
 
@@ -42,6 +46,7 @@ export function AdminOverviewPage() {
 
   if (!user || user.role !== 'admin' || !state) return null;
 
+  const platformMetrics = platformService.getAdminPlatformMetrics(user);
   const students = state.users.filter((u) => u.role === 'student');
   const activeSubs = state.subscriptions.filter((s) => isSubscriptionCurrentlyActive(s));
   const expiredSubs = state.subscriptions.filter((s) => !isSubscriptionCurrentlyActive(s));
@@ -98,6 +103,12 @@ export function AdminOverviewPage() {
 
   const quickModules = [
     {
+      to: '/admin/settings',
+      title: 'UI থিম, ফন্ট ও ফন্ট সাইজ সেটিংস',
+      meta: '৭টি কাস্টম থিম · ১১টি ডাউনলোডকৃত ফন্ট · লাইভ সাইজ কন্ট্রোল',
+      icon: <Palette className="h-5 w-5 text-[#EAC779]" />,
+    },
+    {
       to: '/admin/academic',
       title: 'একাডেমিক কাঠামো',
       meta: `${toBanglaDigits(state.classes.length)} শ্রেণি · ${toBanglaDigits(state.subjects.length)} বিষয় · ${toBanglaDigits(state.chapters.length)} অধ্যায়`,
@@ -122,6 +133,24 @@ export function AdminOverviewPage() {
       icon: <GraduationCap className="h-5 w-5 text-[#EAC779]" />,
     },
     {
+      to: '/admin/admission',
+      title: 'ভর্তি পরীক্ষা ও AI অনুমোদন',
+      meta: `${formatBnNumber(platformMetrics.totalAdmissionQuestions)}টি ভর্তি প্রশ্ন · ${toBanglaDigits(platformMetrics.pendingAiApprovals)}টি অপেক্ষমাণ`,
+      icon: <GraduationCap className="h-5 w-5 text-[#EAC779]" />,
+    },
+    {
+      to: '/admin/learning',
+      title: 'লার্নিং হাব ও মন্তব্য মডারেশন',
+      meta: `${toBanglaDigits(platformMetrics.totalLearningPages)}টি সমাধান · ${toBanglaDigits(platformMetrics.totalComments)}টি মন্তব্য`,
+      icon: <Library className="h-5 w-5 text-[#EAC779]" />,
+    },
+    {
+      to: '/admin/kids-games',
+      title: 'কিডস ম্যাথ গেম ব্যবস্থাপনা',
+      meta: 'যোগ, বিয়োগ, গুণ ও ভাগ গেম ও লেভেল',
+      icon: <Gamepad2 className="h-5 w-5 text-[#EAC779]" />,
+    },
+    {
       to: '/admin/website',
       title: 'ওয়েবসাইট, নোটিশ ও বার্তা',
       meta: `${toBanglaDigits(unreadMessages)}টি অপঠিত যোগাযোগ বার্তা`,
@@ -138,7 +167,7 @@ export function AdminOverviewPage() {
   return (
     <div className="space-y-6 font-bangla">
       {/* Executive Obsidian & Gold Header Banner */}
-      <div className="obsidian-chamfer overflow-hidden rounded-xl p-6 bg-[radial-gradient(ellipse_at_top_right,rgba(212,168,83,0.16),transparent_65%)]">
+      <div className="obsidian-chamfer overflow-hidden rounded-xl p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
             <p className="text-xs font-bold tracking-wider text-[#D4A853]">
@@ -171,15 +200,17 @@ export function AdminOverviewPage() {
         </div>
       </div>
 
-      {/* KPI Metrics Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      {/* Complete Platform KPI Metrics Grid */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4">
         {[
+          { label: 'মোট প্রশ্ন (একাডেমিক + ভর্তি)', value: formatBnNumber(platformMetrics.totalQuestions) },
+          { label: 'একাডেমিক প্রশ্ন (১–১২)', value: formatBnNumber(platformMetrics.totalAcademicQuestions) },
+          { label: 'ভর্তি পরীক্ষার প্রশ্ন', value: formatBnNumber(platformMetrics.totalAdmissionQuestions) },
+          { label: 'লার্নিং হাব পৃষ্ঠা', value: formatBnNumber(platformMetrics.totalLearningPages) },
           { label: 'মোট শিক্ষার্থী', value: formatBnNumber(students.length) },
-          { label: 'সক্রিয় সাবস্ক্রিপশন', value: formatBnNumber(activeSubs.length) },
-          { label: 'মেয়াদোত্তীর্ণ / নিষ্ক্রিয়', value: formatBnNumber(expiredSubs.length) },
-          { label: 'অপেক্ষমাণ পেমেন্ট', value: formatBnNumber(pendingPayments.length) },
-          { label: 'অনুমোদিত আয়', value: `৳${formatBnNumber(totalRevenue)}` },
-          { label: 'মোট মাস্টার প্রশ্ন', value: formatBnNumber(state.questions.length) },
+          { label: 'সংরক্ষিত প্রশ্নপত্র', value: formatBnNumber(platformMetrics.totalSavedPapers) },
+          { label: 'মন্তব্য ও অনুমোদন অপেক্ষমাণ', value: `${formatBnNumber(platformMetrics.totalComments)} / ${formatBnNumber(platformMetrics.pendingApprovals)}` },
+          { label: 'অনুমোদিত আয় (সক্রিয় প্ল্যান)', value: `৳${formatBnNumber(totalRevenue)}` },
         ].map((kpi) => (
           <Card key={kpi.label} className="p-4">
             <p className="text-xs font-medium text-[#9DA6B5]">{kpi.label}</p>

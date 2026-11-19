@@ -1,9 +1,20 @@
 import type { Subscription } from '../types/domain';
-import { supabase } from '../lib/supabaseClient';
+import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
+import { mockDb } from '../lib/mockDb';
+import { getUserPermittedClassIds } from '../lib/rules';
 import { mapSubscription } from './supabaseMappers';
 
 export const subscriptionService = {
   async getMySubscriptions(): Promise<{ subscriptions: Subscription[] }> {
+    if (!isSupabaseConfigured) {
+      const user = mockDb.getCurrentUser();
+      if (!user) return { subscriptions: [] };
+      const subs = mockDb
+        .getState()
+        .subscriptions.filter((s) => s.userId === user.id)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return { subscriptions: subs };
+    }
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*, subscription_classes(class_id)')
@@ -13,6 +24,11 @@ export const subscriptionService = {
   },
 
   async getMyPermittedClassIds(): Promise<{ permittedClassIds: string[] }> {
+    if (!isSupabaseConfigured) {
+      const user = mockDb.getCurrentUser();
+      if (!user) return { permittedClassIds: [] };
+      return { permittedClassIds: getUserPermittedClassIds(mockDb.getState().subscriptions, user.id) };
+    }
     const { data: auth, error: authError } = await supabase.auth.getUser();
     if (authError) throw authError;
     if (!auth.user) return { permittedClassIds: [] };

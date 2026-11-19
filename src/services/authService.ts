@@ -1,5 +1,6 @@
 import type { UserProfile } from '../types/domain';
 import { isSupabaseConfigured, supabase, SUPABASE_URL } from '../lib/supabaseClient';
+import { mockDb } from '../lib/mockDb';
 import { mapUser } from './supabaseMappers';
 
 const redirectUrl = () =>
@@ -32,19 +33,71 @@ function authError(error: { code?: string; message: string }): Error {
   return new Error(error.message || 'অনুরোধটি সম্পন্ন করা যায়নি।');
 }
 
+const QUICK_ADMIN_FLAG = 'qb_quick_admin_session_v1';
+
 export const authService = {
   async getSessionUser(): Promise<{ user: UserProfile | null }> {
-    if (!isSupabaseConfigured) return { user: null };
+    if (!isSupabaseConfigured) return { user: mockDb.getCurrentUser() };
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) throw sessionError;
-    if (!sessionData.session) return { user: null };
+    if (!sessionData.session) {
+      if (typeof window !== 'undefined' && window.localStorage.getItem(QUICK_ADMIN_FLAG) === '1') {
+        return { user: mockDb.getCurrentUser() };
+      }
+      return { user: null };
+    }
 
     const { data, error } = await supabase.auth.getUser();
     if (error) throw error;
     return { user: data.user ? await profileFor(data.user.id) : null };
   },
 
+  async loginAsQuickAdmin(): Promise<{ user: UserProfile }> {
+    const state = mockDb.getState();
+    let adminUser =
+      state.users.find((u) => u.role === 'admin' && u.status === 'active') ||
+      state.users.find((u) => u.role === 'admin');
+    if (!adminUser) {
+      adminUser = {
+        id: 'user-quick-admin',
+        fullName: 'সুপার অ্যাডমিন',
+        email: 'admin@prashnabank.bd',
+        phone: '01700000000',
+        institution: 'প্রশ্নব্যাংক এডমিন',
+        preferredLanguage: 'bn',
+        role: 'admin',
+        status: 'active',
+        emailVerified: true,
+        createdAt: new Date().toISOString(),
+      };
+      state.users.unshift(adminUser);
+      mockDb.save();
+    }
+    mockDb.setCurrentUserId(adminUser.id);
+    try {
+      window.localStorage.setItem(QUICK_ADMIN_FLAG, '1');
+    } catch {
+      // ignore storage errors
+    }
+    mockDb.logActivity(adminUser, 'admin.quick_access', 'user', adminUser.id, 'দ্রুত অ্যাডমিন অ্যাক্সেস চালু করা হয়েছে');
+    return { user: adminUser };
+  },
+
   async login(email: string, password: string): Promise<{ user: UserProfile }> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const normalized = email.trim().toLowerCase();
+      const user = state.users.find((u) => u.email.trim().toLowerCase() === normalized);
+      if (!user || state.passwordsByUserId[user.id] !== password) {
+        throw new Error('ইমেইল বা পাসওয়ার্ড সঠিক নয়।');
+      }
+      if (user.status === 'suspended') {
+        throw new Error('এই অ্যাকাউন্টটি স্থগিত করা হয়েছে। সাপোর্টে যোগাযোগ করুন।');
+      }
+      mockDb.setCurrentUserId(user.id);
+      mockDb.logActivity(user, 'user.login', 'user', user.id, `${user.email} লগইন করেছেন`);
+      return { user };
+    }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw authError(error);
     if (!data.user) throw new Error('লগইন সম্পন্ন হয়নি।');
@@ -65,6 +118,30 @@ export const authService = {
     preferredLanguage: 'en' | 'bn';
     password: string;
   }): Promise<{ user: UserProfile }> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const normalized = input.email.trim().toLowerCase();
+      if (state.users.some((u) => u.email.trim().toLowerCase() === normalized)) {
+        throw new Error('এই ইমেইল ঠিকানাটি ইতিমধ্যেই নিবন্ধিত আছে।');
+      }
+      const user: UserProfile = {
+        id: mockDb.uid('u'),
+        fullName: input.fullName.trim(),
+        email: normalized,
+        phone: input.phone.trim(),
+        institution: input.institution?.trim() || undefined,
+        role: 'student',
+        status: 'active',
+        emailVerified: true,
+        preferredLanguage: input.preferredLanguage,
+        createdAt: new Date().toISOString(),
+      };
+      state.users.unshift(user);
+      state.passwordsByUserId[user.id] = input.password;
+      mockDb.save();
+      mockDb.logActivity(user, 'user.register', 'user', user.id, `${user.email} নিবন্ধন করেছেন`);
+      return { user };
+    }
     const { data, error } = await supabase.auth.signUp({
       email: input.email,
       password: input.password,
@@ -99,24 +176,46 @@ export const authService = {
   },
 
   async logout(): Promise<{ ok: boolean }> {
+    try {
+      window.localStorage.removeItem(QUICK_ADMIN_FLAG);
+    } catch {
+      // ignore storage errors
+    }
+    if (!isSupabaseConfigured) {
+      mockDb.setCurrentUserId(null);
+      return { ok: true };
+    }
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     return { ok: true };
   },
 
   async forgotPassword(email: string): Promise<{ ok: boolean; message: string }> {
+    if (!isSupabaseConfigured) {
+      void email;
+      return { ok: true, message: 'যদি এই ইমেইলে অ্যাকাউন্ট থাকে, রিসেট লিংক পাঠানো হয়েছে।' };
+    }
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl() });
     if (error) throw authError(error);
     return { ok: true, message: 'যদি এই ইমেইলে অ্যাকাউন্ট থাকে, রিসেট লিংক পাঠানো হয়েছে।' };
   },
 
   async resetPassword(_token: string, password: string): Promise<{ ok: boolean }> {
+    if (!isSupabaseConfigured) {
+      const user = mockDb.getCurrentUser();
+      if (user) {
+        mockDb.getState().passwordsByUserId[user.id] = password;
+        mockDb.save();
+      }
+      return { ok: true };
+    }
     const { error } = await supabase.auth.updateUser({ password });
     if (error) throw authError(error);
     return { ok: true };
   },
 
   async completeAuthCallback(): Promise<void> {
+    if (!isSupabaseConfigured) return;
     const current = new URL(window.location.href);
     const code = current.searchParams.get('code');
     if (code) {

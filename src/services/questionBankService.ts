@@ -1,4 +1,5 @@
 import type { AppDatabaseState } from '../data/seedData';
+import { findDuplicateSubject, inferEducationLevel } from '../data/curriculumData';
 import {
   canUserAccessQuestion,
   canUserAddQuestionToPaper,
@@ -34,6 +35,7 @@ import { questionService } from './questionService';
 import { subscriptionService } from './subscriptionService';
 import { authService } from './authService';
 import { favoriteService } from './favoriteService';
+import { isSupabaseConfigured } from '../lib/supabaseClient';
 import { paperService, type GenerateCustomPaperInput } from './paperService';
 import { paymentService } from './paymentService';
 import { userService } from './userService';
@@ -180,6 +182,13 @@ export const questionBankService = {
     return user;
   },
 
+  async enterQuickAdmin(): Promise<UserProfile> {
+    const { user } = await authService.loginAsQuickAdmin();
+    await this.hydrateFromServer();
+    notifySync();
+    return user;
+  },
+
   async register(input: {
     fullName: string;
     email: string;
@@ -202,7 +211,16 @@ export const questionBankService = {
 
   async updateProfile(
     _userId: string,
-    patch: { fullName: string; phone: string; institution?: string; preferredLanguage: 'en' | 'bn' }
+    patch: {
+      fullName: string;
+      phone: string;
+      institution?: string;
+      classId?: string;
+      avatarUrl?: string;
+      bio?: string;
+      privacySettings?: UserProfile['privacySettings'];
+      preferredLanguage: 'en' | 'bn';
+    }
   ): Promise<UserProfile> {
     const { user } = await userService.updateMyProfile(patch);
     store.user = user;
@@ -397,7 +415,7 @@ export const questionBankService = {
       updatedAt: now,
     };
     store.papers = [created, ...store.papers];
-    runWriteThrough(() => paperService.savePaper(input));
+    runWriteThrough(() => paperService.savePaper(isSupabaseConfigured ? input : { ...input, id: created.id }));
     return created;
   },
 
@@ -593,11 +611,28 @@ export const questionBankService = {
 
   adminAddClass(admin: UserProfile, input: Omit<AcademicClass, 'id'>): AcademicClass {
     assertAdmin(admin);
-    const item: AcademicClass = { ...input, id: uid('cls') };
+    const item: AcademicClass = {
+      ...input,
+      educationLevel: input.educationLevel ?? inferEducationLevel(input.levelOrder),
+      id: uid('cls'),
+    };
     store.adminSnapshot?.classes.push(item);
     store.academic.classes.push(item);
+    if (item.isActive) store.publicData.classes.push(item);
     runWriteThrough(() => adminService.addClass(input));
     return item;
+  },
+
+  adminToggleClassStatus(admin: UserProfile, classId: string, isActive: boolean): void {
+    assertAdmin(admin);
+    const update = (arr?: AcademicClass[]) => {
+      const target = arr?.find((c) => c.id === classId);
+      if (target) target.isActive = isActive;
+    };
+    update(store.adminSnapshot?.classes);
+    update(store.academic.classes);
+    store.publicData.classes = store.academic.classes.filter((c) => c.isActive);
+    runWriteThrough(() => adminService.toggleClassStatus(classId, isActive));
   },
 
   adminAddGroup(admin: UserProfile, input: Omit<AcademicGroup, 'id'>): AcademicGroup {
@@ -611,11 +646,44 @@ export const questionBankService = {
 
   adminAddSubject(admin: UserProfile, input: Omit<Subject, 'id'>): Subject {
     assertAdmin(admin);
+    const dup = findDuplicateSubject(store.academic.subjects, input);
+    if (dup) {
+      throw new Error(`একই শ্রেণি ও বিভাগে "${dup.nameBn}" (${dup.code}) বিষয়টি ইতিমধ্যে রয়েছে।`);
+    }
     const item: Subject = { ...input, id: uid('sub') };
     store.adminSnapshot?.subjects.push(item);
     store.academic.subjects.push(item);
+    if (item.isActive) store.publicData.subjects.push(item);
     runWriteThrough(() => adminService.addSubject(input));
     return item;
+  },
+
+  adminUpdateSubject(admin: UserProfile, subject: Subject): Subject {
+    assertAdmin(admin);
+    const dup = findDuplicateSubject(store.academic.subjects, subject);
+    if (dup) {
+      throw new Error(`একই শ্রেণি ও বিভাগে "${dup.nameBn}" (${dup.code}) বিষয়টি ইতিমধ্যে রয়েছে।`);
+    }
+    const applyUpdate = (arr?: Subject[]) => {
+      if (!arr) return;
+      const idx = arr.findIndex((s) => s.id === subject.id);
+      if (idx !== -1) arr[idx] = subject;
+    };
+    applyUpdate(store.adminSnapshot?.subjects);
+    applyUpdate(store.academic.subjects);
+    store.publicData.subjects = store.academic.subjects.filter((s) => s.isActive);
+    runWriteThrough(() => adminService.updateSubject(subject));
+    return subject;
+  },
+
+  adminDeleteSubject(admin: UserProfile, subjectId: string): void {
+    assertAdmin(admin);
+    if (store.adminSnapshot) {
+      store.adminSnapshot.subjects = store.adminSnapshot.subjects.filter((s) => s.id !== subjectId);
+    }
+    store.academic.subjects = store.academic.subjects.filter((s) => s.id !== subjectId);
+    store.publicData.subjects = store.academic.subjects.filter((s) => s.isActive);
+    runWriteThrough(() => adminService.deleteSubject(subjectId));
   },
 
   adminAddChapter(admin: UserProfile, input: Omit<Chapter, 'id'>): Chapter {
@@ -653,7 +721,7 @@ export const questionBankService = {
       if (idx !== -1) store.adminSnapshot.questions[idx] = q;
       else store.adminSnapshot.questions.unshift(q);
     }
-    runWriteThrough(() => adminService.saveQuestion(input));
+    runWriteThrough(() => adminService.saveQuestion(isSupabaseConfigured ? input : { ...input, id: q.id }));
     return q;
   },
 
@@ -688,7 +756,7 @@ export const questionBankService = {
       if (idx !== -1) store.adminSnapshot.plans[idx] = plan;
       else store.adminSnapshot.plans.push(plan);
     }
-    runWriteThrough(() => adminService.savePlan(input));
+    runWriteThrough(() => adminService.savePlan(isSupabaseConfigured ? input : { ...input, id: plan.id }));
     return plan;
   },
 
@@ -703,7 +771,7 @@ export const questionBankService = {
       if (idx !== -1) store.adminSnapshot.paymentMethods[idx] = pm;
       else store.adminSnapshot.paymentMethods.push(pm);
     }
-    runWriteThrough(() => adminService.savePaymentMethod(input));
+    runWriteThrough(() => adminService.savePaymentMethod(isSupabaseConfigured ? input : { ...input, id: pm.id }));
     return pm;
   },
 
@@ -736,7 +804,7 @@ export const questionBankService = {
     assertAdmin(admin);
     const notice: Notice = { ...input, id: input.id || uid('not'), createdAt: new Date().toISOString() };
     store.adminSnapshot?.notices.unshift(notice);
-    runWriteThrough(() => adminService.saveNotice(input));
+    runWriteThrough(() => adminService.saveNotice(isSupabaseConfigured ? input : { ...input, id: notice.id }));
     return notice;
   },
 
@@ -744,7 +812,7 @@ export const questionBankService = {
     assertAdmin(admin);
     const faq: FaqItem = { ...input, id: input.id || uid('faq') };
     store.adminSnapshot?.faqs.push(faq);
-    runWriteThrough(() => adminService.saveFaq(input));
+    runWriteThrough(() => adminService.saveFaq(isSupabaseConfigured ? input : { ...input, id: faq.id }));
     return faq;
   },
 

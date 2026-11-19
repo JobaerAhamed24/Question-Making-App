@@ -1,9 +1,13 @@
 import type { UserProfile } from '../types/domain';
-import { supabase } from '../lib/supabaseClient';
+import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
+import { mockDb } from '../lib/mockDb';
 import { mapUser } from './supabaseMappers';
 
 export const userService = {
   async getMyProfile(): Promise<{ user: UserProfile | null }> {
+    if (!isSupabaseConfigured) {
+      return { user: mockDb.getCurrentUser() };
+    }
     const { data: auth, error: authError } = await supabase.auth.getUser();
     if (authError) throw authError;
     if (!auth.user) return { user: null };
@@ -20,8 +24,33 @@ export const userService = {
     fullName: string;
     phone: string;
     institution?: string;
+    classId?: string;
+    avatarUrl?: string;
+    bio?: string;
+    privacySettings?: UserProfile['privacySettings'];
     preferredLanguage: 'en' | 'bn';
   }): Promise<{ user: UserProfile }> {
+    if (!isSupabaseConfigured) {
+      const current = mockDb.getCurrentUser();
+      if (!current) throw new Error('লগইন করুন।');
+      const state = mockDb.getState();
+      const idx = state.users.findIndex((u) => u.id === current.id);
+      if (idx === -1) throw new Error('ব্যবহারকারী পাওয়া যায়নি।');
+      const updated: UserProfile = {
+        ...state.users[idx],
+        fullName: patch.fullName.trim(),
+        phone: patch.phone.trim(),
+        institution: patch.institution?.trim() || undefined,
+        classId: patch.classId ?? state.users[idx].classId,
+        avatarUrl: patch.avatarUrl !== undefined ? (patch.avatarUrl || undefined) : state.users[idx].avatarUrl,
+        bio: patch.bio !== undefined ? (patch.bio.trim() || undefined) : state.users[idx].bio,
+        privacySettings: patch.privacySettings ?? state.users[idx].privacySettings,
+        preferredLanguage: patch.preferredLanguage,
+      };
+      state.users[idx] = updated;
+      mockDb.save();
+      return { user: updated };
+    }
     const { data: auth, error: authError } = await supabase.auth.getUser();
     if (authError) throw authError;
     if (!auth.user) throw new Error('লগইন করুন।');

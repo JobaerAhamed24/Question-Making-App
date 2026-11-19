@@ -61,6 +61,30 @@ export function getRoleLabelBn(role: 'student' | 'admin'): string {
   return role === 'admin' ? 'অ্যাডমিন' : 'শিক্ষার্থী';
 }
 
+export const EDUCATION_BOARD_LABELS_BN: Record<string, { bn: string; en: string }> = {
+  dhaka: { bn: 'ঢাকা বোর্ড', en: 'Dhaka Board' },
+  chattogram: { bn: 'চট্টগ্রাম বোর্ড', en: 'Chattogram Board' },
+  cumilla: { bn: 'কুমিল্লা বোর্ড', en: 'Cumilla Board' },
+  rajshahi: { bn: 'রাজশাহী বোর্ড', en: 'Rajshahi Board' },
+  jashore: { bn: 'যশোর বোর্ড', en: 'Jashore Board' },
+  barishal: { bn: 'বরিশাল বোর্ড', en: 'Barishal Board' },
+  sylhet: { bn: 'সিলেট বোর্ড', en: 'Sylhet Board' },
+  dinajpur: { bn: 'দিনাজপুর বোর্ড', en: 'Dinajpur Board' },
+  mymensingh: { bn: 'ময়মনসিংহ বোর্ড', en: 'Mymensingh Board' },
+};
+
+export const QUESTION_TYPE_LABELS_BN: Record<string, string> = {
+  mcq: 'বহুনির্বাচনী (MCQ)',
+  short: 'সংক্ষিপ্ত প্রশ্ন',
+  cq: 'সৃজনশীল (CQ)',
+  broad: 'রচনামূলক / বড় প্রশ্ন',
+  fill_blank: 'শূন্যস্থান পূরণ',
+  true_false: 'সত্য / মিথ্যা',
+  matching: 'মিলকরণ (Matching)',
+  math: 'গাণিতিক সমস্যা',
+  image_based: 'চিত্রভিত্তিক প্রশ্ন',
+};
+
 export const BREADCRUMB_LABELS_BN: Record<string, string> = {
   classes: 'আমার শ্রেণিসমূহ',
   questions: 'প্রশ্নব্যাংক',
@@ -69,11 +93,15 @@ export const BREADCRUMB_LABELS_BN: Record<string, string> = {
   papers: 'আমার প্রশ্নপত্র',
   new: 'নতুন তৈরি',
   preview: 'প্রিভিউ ও এক্সপোর্ট',
+  editor: 'প্রশ্নপত্র এডিটর',
   subscription: 'সাবস্ক্রিপশন',
   payments: 'পেমেন্ট ইতিহাস',
   downloads: 'ডাউনলোড',
   profile: 'প্রোফাইল সেটিংস',
   academic: 'একাডেমিক কাঠামো',
+  admission: 'ভর্তি পরীক্ষা ব্যবস্থাপনা',
+  learning: 'লার্নিং হাব ব্যবস্থাপনা',
+  'kids-games': 'কিডস গেম ব্যবস্থাপনা',
   plans: 'সাবস্ক্রিপশন প্ল্যান',
   subscribers: 'সাবস্ক্রাইবার তালিকা',
   users: 'ব্যবহারকারী ও ভূমিকা',

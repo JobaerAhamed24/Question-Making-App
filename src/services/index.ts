@@ -1,11 +1,14 @@
 export { academicService } from './academicService';
 export { adminService } from './adminService';
 export { authService } from './authService';
+export { examService } from './examService';
 export { favoriteService } from './favoriteService';
 export { paperService } from './paperService';
 export { paymentService } from './paymentService';
+export { profileService } from './profileService';
 export { questionBankService } from './questionBankService';
 export { questionService } from './questionService';
+export { slideService } from './slideService';
 export { storageService } from './storageService';
 export { subscriptionService } from './subscriptionService';
 export { userService } from './userService';

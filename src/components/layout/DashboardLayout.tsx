@@ -5,9 +5,12 @@ import {
   ChevronRight,
   LogOut,
   Menu,
+  Moon,
+  Sun,
   X,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
 import { BREADCRUMB_LABELS_BN } from '../../lib/bn';
 
@@ -22,13 +25,17 @@ export interface SidebarNavItem {
 function DashboardCrest() {
   return (
     <svg width="24" height="24" viewBox="0 0 36 36" fill="none" aria-hidden="true" className="h-6 w-6 shrink-0">
-      <path
-        d="M18 2.5L31.5 8.5V18.2C31.5 26.1 25.6 31.8 18 34C10.4 31.8 4.5 26.1 4.5 18.2V8.5L18 2.5Z"
-        fill="#12161F"
-        stroke="#D4A853"
+      <rect
+        x="2.5"
+        y="2.5"
+        width="31"
+        height="31"
+        rx="8"
+        fill="#0B1A33"
+        stroke="var(--theme-accent)"
         strokeWidth="2"
       />
-      <path d="M12.5 12.5H23.5V16H19.75V24.5H16.25V16H12.5V12.5Z" fill="#EAC779" />
+      <path d="M12.5 11.5H23.5V15H19.75V24.5H16.25V15H12.5V11.5Z" fill="var(--theme-accent)" />
     </svg>
   );
 }
@@ -45,6 +52,7 @@ export function DashboardLayout({
   variant?: 'student' | 'admin';
 }) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { pushToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -170,7 +178,7 @@ export function DashboardLayout({
     <div className="min-h-screen flex font-bangla bg-[#07090C] text-[#F3EEE3]">
       {/* Desktop Sidebar */}
       <aside
-        className={`hidden lg:flex flex-col shrink-0 bg-[#090C11] text-[#F3EEE3] border-r border-[#D4A853]/25 transition-all duration-150 no-print ${
+        className={`dashboard-sidebar hidden lg:flex flex-col shrink-0 bg-[#090C11] text-[#F3EEE3] border-r border-[#D4A853]/25 transition-all duration-150 no-print ${
           collapsed ? 'w-[68px]' : 'w-[264px]'
         }`}
       >
@@ -181,7 +189,7 @@ export function DashboardLayout({
       {mobileOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden no-print">
           <div className="fixed inset-0 bg-black/75 backdrop-blur-xs" onClick={() => setMobileOpen(false)} />
-          <aside className="relative z-10 w-72 max-w-[85vw] flex flex-col bg-[#090C11] text-[#F3EEE3] border-r border-[#D4A853]/30">
+          <aside className="dashboard-sidebar relative z-10 w-72 max-w-[85vw] flex flex-col bg-[#090C11] text-[#F3EEE3] border-r border-[#D4A853]/30">
             {renderNavContent(true)}
           </aside>
         </div>
@@ -219,6 +227,14 @@ export function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'light' ? 'ডার্ক মোড চালু করুন' : 'লাইট মোড চালু করুন'}
+              className="inline-flex items-center justify-center rounded-lg border border-[#D4A853]/35 bg-[#12161F] p-1.5 text-[#EAC779] hover:border-[#EAC779] transition-colors cursor-pointer"
+            >
+              {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            </button>
             <Link
               to="/"
               className="text-sm font-medium text-[#B8C0CE] hover:text-[#EAC779] transition-colors whitespace-nowrap"

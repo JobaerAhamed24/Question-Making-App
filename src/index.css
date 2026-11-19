@@ -1,34 +1,224 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-display: "Noto Serif Bengali", "Tiro Bangla", "Hind Siliguri", "Outfit", ui-sans-serif, system-ui, serif;
-  --font-sans: "Noto Serif Bengali", "Tiro Bangla", "Hind Siliguri", "Plus Jakarta Sans", ui-sans-serif, system-ui, serif;
-  --font-bangla: "Noto Serif Bengali", "Tiro Bangla", "Hind Siliguri", serif;
-  --font-mono: "JetBrains Mono", "Noto Serif Bengali", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: var(--site-font-family, "Hind Siliguri", ui-sans-serif, system-ui, -apple-system, sans-serif);
+  --font-sans: var(--site-font-family, "Hind Siliguri", ui-sans-serif, system-ui, -apple-system, sans-serif);
+  --font-bangla: var(--site-font-family, "Hind Siliguri", ui-sans-serif, system-ui, -apple-system, sans-serif);
+  --font-mono: "JetBrains Mono", var(--site-font-family, "Hind Siliguri"), ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --color-canvas: #07090C;
-  --color-surface: #0E1117;
-  --color-surface-elevated: #141922;
-  --color-ink: #F3EEE3;
-  --color-ink-muted: #C2C8D3;
-  --color-ink-subtle: #8C95A4;
-  --color-line: rgba(212, 168, 83, 0.25);
-  --color-accent: #D4A853;
-  --color-accent-bright: #EAC779;
-  --color-accent-hover: #C2913B;
+  /* Enlarged small text scale for crisp Bengali legibility across the whole site */
+  --text-xs: 0.875rem;
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.95rem;
+  --text-sm--line-height: 1.55;
+
+  --color-canvas: #0B1A33;
+  --color-surface: #112240;
+  --color-surface-elevated: #172C52;
+  --color-ink: #F8FAFC;
+  --color-ink-muted: #CBD5E1;
+  --color-ink-subtle: #94A3B8;
+  --color-line: rgba(148, 163, 184, 0.24);
+  --color-accent: #F57C1F;
+  --color-accent-bright: #FF8F38;
+  --color-accent-hover: #E06810;
+}
+
+/* =====================================================================
+   CUSTOM THEME PRESETS (Dynamic CSS Variables for Dark + Light Mode)
+   ===================================================================== */
+:root {
+  --site-font-family: "Hind Siliguri", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --ui-font-scale: 1;
+
+  /* Default: Apex Academy — Deep Oxford Navy + Crisp White + Academic Orange */
+  --theme-accent: #F57C1F;
+  --theme-accent-bright: #FF8F38;
+  --theme-accent-light-ink: #D95E08;
+  --theme-accent-light-hover: #B94C04;
+  --theme-btn-grad: linear-gradient(135deg, #FF8A2B 0%, #F57C1F 60%, #E06810 100%);
+  --theme-btn-ink: #FFFFFF;
+  --theme-text-grad-dark: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%);
+  --theme-text-grad-light: linear-gradient(180deg, #0B1A33 0%, #152C52 100%);
+  --theme-border-dark: rgba(148, 163, 184, 0.24);
+  --theme-border-dark-hover: rgba(245, 124, 31, 0.65);
+  --theme-border-light: #E2E8F0;
+  --theme-border-light-hover: #F57C1F;
+  --theme-canvas-dark: #0B1A33;
+  --theme-canvas-light: #F7F8FA;
+  --theme-surface-dark: #112240;
+  --theme-surface-dark-elevated: #172E56;
+  --theme-surface-light-muted: #F1F5F9;
+  --theme-navy: #0B1A33;
+  --theme-navy-elevated: #13284A;
+}
+
+:root[data-theme-preset="obsidian-gold"] {
+  --theme-accent: #D4A853;
+  --theme-accent-bright: #EAC779;
+  --theme-accent-light-ink: #8A5E14;
+  --theme-accent-light-hover: #6B460B;
+  --theme-btn-grad: linear-gradient(135deg, #ECC97B 0%, #D4A74E 55%, #BD8D37 100%);
+  --theme-btn-ink: #090B0E;
+  --theme-text-grad-dark: linear-gradient(180deg, #F8E2AF 0%, #D9AA52 60%, #B88632 100%);
+  --theme-text-grad-light: linear-gradient(180deg, #8F6315 0%, #6D480B 100%);
+  --theme-border-dark: rgba(212, 168, 83, 0.28);
+  --theme-border-dark-hover: rgba(234, 199, 121, 0.65);
+  --theme-border-light: rgba(154, 114, 41, 0.28);
+  --theme-border-light-hover: rgba(154, 114, 41, 0.62);
+  --theme-canvas-dark: #07090C;
+  --theme-canvas-light: #F8F6F1;
+  --theme-surface-dark: #0E1117;
+  --theme-surface-dark-elevated: #141922;
+  --theme-surface-light-muted: #F3EFE6;
+}
+
+:root[data-theme-preset="emerald-scholar"] {
+  --theme-accent: #10B981;
+  --theme-accent-bright: #34D399;
+  --theme-accent-light-ink: #047857;
+  --theme-accent-light-hover: #065F46;
+  --theme-btn-grad: linear-gradient(135deg, #34D399 0%, #10B981 55%, #059669 100%);
+  --theme-btn-ink: #042218;
+  --theme-text-grad-dark: linear-gradient(180deg, #A7F3D0 0%, #34D399 60%, #10B981 100%);
+  --theme-text-grad-light: linear-gradient(180deg, #059669 0%, #065F46 100%);
+  --theme-border-dark: rgba(16, 185, 129, 0.30);
+  --theme-border-dark-hover: rgba(52, 211, 153, 0.68);
+  --theme-border-light: rgba(5, 150, 105, 0.28);
+  --theme-border-light-hover: rgba(5, 150, 105, 0.62);
+  --theme-canvas-dark: #060C0A;
+  --theme-canvas-light: #F3FAF7;
+  --theme-surface-dark: #0C1713;
+  --theme-surface-dark-elevated: #12231D;
+  --theme-surface-light-muted: #EBF5F0;
+}
+
+:root[data-theme-preset="royal-sapphire"] {
+  --theme-accent: #3B82F6;
+  --theme-accent-bright: #60A5FA;
+  --theme-accent-light-ink: #1D4ED8;
+  --theme-accent-light-hover: #1E40AF;
+  --theme-btn-grad: linear-gradient(135deg, #60A5FA 0%, #3B82F6 55%, #2563EB 100%);
+  --theme-btn-ink: #FFFFFF;
+  --theme-text-grad-dark: linear-gradient(180deg, #BFDBFE 0%, #60A5FA 60%, #3B82F6 100%);
+  --theme-text-grad-light: linear-gradient(180deg, #2563EB 0%, #1E40AF 100%);
+  --theme-border-dark: rgba(59, 130, 246, 0.32);
+  --theme-border-dark-hover: rgba(96, 165, 250, 0.72);
+  --theme-border-light: rgba(37, 99, 235, 0.26);
+  --theme-border-light-hover: rgba(37, 99, 235, 0.60);
+  --theme-canvas-dark: #060A12;
+  --theme-canvas-light: #F3F7FD;
+  --theme-surface-dark: #0C1322;
+  --theme-surface-dark-elevated: #121D33;
+  --theme-surface-light-muted: #EAF1FC;
+}
+
+:root[data-theme-preset="academic-indigo"] {
+  --theme-accent: #6366F1;
+  --theme-accent-bright: #818CF8;
+  --theme-accent-light-ink: #4338CA;
+  --theme-accent-light-hover: #3730A3;
+  --theme-btn-grad: linear-gradient(135deg, #818CF8 0%, #6366F1 55%, #4F46E5 100%);
+  --theme-btn-ink: #FFFFFF;
+  --theme-text-grad-dark: linear-gradient(180deg, #C7D2FE 0%, #818CF8 60%, #6366F1 100%);
+  --theme-text-grad-light: linear-gradient(180deg, #4F46E5 0%, #3730A3 100%);
+  --theme-border-dark: rgba(99, 102, 241, 0.32);
+  --theme-border-dark-hover: rgba(129, 140, 248, 0.72);
+  --theme-border-light: rgba(79, 70, 229, 0.26);
+  --theme-border-light-hover: rgba(79, 70, 229, 0.60);
+  --theme-canvas-dark: #080814;
+  --theme-canvas-light: #F5F5FE;
+  --theme-surface-dark: #101026;
+  --theme-surface-dark-elevated: #181838;
+  --theme-surface-light-muted: #ECECFE;
+}
+
+:root[data-theme-preset="crimson-editorial"] {
+  --theme-accent: #E11D48;
+  --theme-accent-bright: #FB7185;
+  --theme-accent-light-ink: #BE123C;
+  --theme-accent-light-hover: #9F1239;
+  --theme-btn-grad: linear-gradient(135deg, #FB7185 0%, #E11D48 55%, #BE123C 100%);
+  --theme-btn-ink: #FFFFFF;
+  --theme-text-grad-dark: linear-gradient(180deg, #FECDD3 0%, #FB7185 60%, #E11D48 100%);
+  --theme-text-grad-light: linear-gradient(180deg, #BE123C 0%, #881337 100%);
+  --theme-border-dark: rgba(225, 29, 72, 0.32);
+  --theme-border-dark-hover: rgba(251, 113, 133, 0.72);
+  --theme-border-light: rgba(190, 18, 60, 0.26);
+  --theme-border-light-hover: rgba(190, 18, 60, 0.58);
+  --theme-canvas-dark: #0E070A;
+  --theme-canvas-light: #FDF4F6;
+  --theme-surface-dark: #1A0D12;
+  --theme-surface-dark-elevated: #26131B;
+  --theme-surface-light-muted: #FBECEF;
+}
+
+:root[data-theme-preset="teal-modern"] {
+  --theme-accent: #14B8A6;
+  --theme-accent-bright: #2DD4BF;
+  --theme-accent-light-ink: #0F766E;
+  --theme-accent-light-hover: #115E59;
+  --theme-btn-grad: linear-gradient(135deg, #2DD4BF 0%, #14B8A6 55%, #0D9488 100%);
+  --theme-btn-ink: #042422;
+  --theme-text-grad-dark: linear-gradient(180deg, #99F6E4 0%, #2DD4BF 60%, #14B8A6 100%);
+  --theme-text-grad-light: linear-gradient(180deg, #0D9488 0%, #115E59 100%);
+  --theme-border-dark: rgba(20, 184, 166, 0.32);
+  --theme-border-dark-hover: rgba(45, 212, 191, 0.72);
+  --theme-border-light: rgba(13, 148, 136, 0.26);
+  --theme-border-light-hover: rgba(13, 148, 136, 0.60);
+  --theme-canvas-dark: #060D0D;
+  --theme-canvas-light: #F2FAFA;
+  --theme-surface-dark: #0C1919;
+  --theme-surface-dark-elevated: #122626;
+  --theme-surface-light-muted: #E6F5F5;
+}
+
+:root.light {
+  --color-canvas: var(--theme-canvas-light);
+  --color-surface: #FFFFFF;
+  --color-surface-elevated: var(--theme-surface-light-muted);
+  --color-ink: #0B1A33;
+  --color-ink-muted: #334155;
+  --color-ink-subtle: #64748B;
+  --color-line: var(--theme-border-light);
+  --color-accent: var(--theme-accent-light-ink);
+  --color-accent-bright: var(--theme-accent-light-hover);
+  --color-accent-hover: var(--theme-accent-light-hover);
 }
 
 @layer base {
   html {
-    font-family: var(--font-bangla);
+    font-family: var(--site-font-family);
+    font-size: calc(16px * var(--ui-font-scale, 1));
     color: var(--color-ink);
-    background-color: var(--color-canvas);
+    background-color: var(--theme-canvas-dark);
     color-scheme: dark;
     scroll-behavior: smooth;
   }
 
-  h1, h2, h3, h4, .font-display {
-    font-family: var(--font-bangla);
+  body,
+  button,
+  input,
+  select,
+  textarea {
+    font-family: var(--site-font-family);
+  }
+
+  html.light {
+    color-scheme: light;
+    color: #0B1A33;
+    background-color: var(--theme-canvas-light);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .font-display {
+    font-family: var(--site-font-family);
   }
 
   .tabular-nums {
@@ -37,85 +227,702 @@
 
   /* Focus ring standard for keyboard accessibility */
   :focus-visible {
-    outline: 2px solid #E6C16E;
+    outline: 2px solid var(--theme-accent);
     outline-offset: 2px;
   }
 }
 
-/* Bengali editorial serif typography */
+/* Global Typography Utility */
 .font-bangla,
 .font-bangla h1,
 .font-bangla h2,
 .font-bangla h3,
 .font-bangla h4,
 .font-bangla .font-display {
-  font-family: var(--font-bangla);
+  font-family: var(--site-font-family);
 }
 
-/* Luxury Obsidian & Brushed Gold Card System */
+/* =====================================================================
+   SLIGHTLY LARGER SMALL TEXT UTILITIES (Better Bengali Legibility)
+   ===================================================================== */
+.text-\[10px\] {
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.text-\[11px\] {
+  font-size: 0.83rem;
+  line-height: 1.4;
+}
+
+.text-\[12px\] {
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.text-\[13px\] {
+  font-size: 0.93rem;
+  line-height: 1.5;
+}
+
+/* Section divider line adapting to active theme */
+.section-divider-line {
+  background: linear-gradient(90deg, transparent, var(--theme-accent), transparent);
+  opacity: 0.55;
+}
+
+/* =====================================================================
+   DARK MODE REFINEMENT & DYNAMIC THEME PRESET APPLICATION
+   ===================================================================== */
+html.dark .text-\[\#6E7787\],
+html:not(.light) .text-\[\#6E7787\] {
+  color: #9AA4B6;
+}
+
+html.dark .text-\[\#7D8696\],
+html:not(.light) .text-\[\#7D8696\] {
+  color: #A3ADBE;
+}
+
+html.dark .text-\[\#8C95A4\],
+html:not(.light) .text-\[\#8C95A4\] {
+  color: #AAB3C4;
+}
+
+html.dark .placeholder\:text-\[\#6E7787\]::placeholder,
+html:not(.light) .placeholder\:text-\[\#6E7787\]::placeholder {
+  color: #8E98AA;
+}
+
+/* Apply Custom Theme Preset Surfaces & Accents in Dark Mode (including Apex Navy) */
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#07090C\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#05070A\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#07090D\] {
+  background-color: var(--theme-canvas-dark);
+}
+
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#090B10\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#090C11\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#0A0D12\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#0B0E14\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#0D1016\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#0D1017\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#0E1117\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#0E1219\] {
+  background-color: var(--theme-surface-dark);
+}
+
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#0A0D12\]\/95 {
+  background-color: color-mix(in srgb, var(--theme-canvas-dark) 95%, transparent);
+}
+
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#10141C\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#10141D\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#111621\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#12161F\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#121620\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#121722\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#141822\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#141922\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#141923\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#161B25\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#171C26\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#1D2330\] {
+  background-color: var(--theme-surface-dark-elevated);
+}
+
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .text-\[\#EAC779\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .text-\[\#E6C16E\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .text-\[\#F2D184\] {
+  color: var(--theme-accent-bright);
+}
+
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .text-\[\#D4A853\] {
+  color: var(--theme-accent);
+}
+
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .border-\[\#D4A853\]\/15,
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .border-\[\#D4A853\]\/20,
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .border-\[\#D4A853\]\/25,
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .border-\[\#D4A853\]\/28,
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .border-\[\#D4A853\]\/30,
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .border-\[\#D4A853\]\/35,
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .border-\[\#D4A853\]\/40,
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .border-\[\#D4A853\]\/45,
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .border-\[\#D4A853\]\/50 {
+  border-color: var(--theme-border-dark);
+}
+
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .border-\[\#EAC779\],
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .hover\:border-\[\#EAC779\]:hover {
+  border-color: var(--theme-accent-bright);
+}
+
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#D4A853\] {
+  background-color: var(--theme-accent);
+  color: var(--theme-btn-ink);
+}
+
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#D4A853\]\/10,
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#D4A853\]\/12,
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#D4A853\]\/15,
+html:not(.light):not([data-theme-preset="obsidian-gold"]) .bg-\[\#D4A853\]\/20 {
+  background-color: color-mix(in srgb, var(--theme-accent) 16%, transparent);
+}
+
+/* Base Card System (Dark default — dynamically adapts to Navy / Obsidian / Emerald etc.) */
 .obsidian-card {
-  background: linear-gradient(180deg, rgba(19, 23, 32, 0.94) 0%, rgba(12, 15, 21, 0.98) 100%);
-  border: 1px solid rgba(212, 168, 83, 0.28);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 12px 32px rgba(0, 0, 0, 0.45);
+  background: var(--theme-surface-dark);
+  border: 1px solid var(--theme-border-dark);
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.32);
 }
 
 .obsidian-card-interactive {
-  background: linear-gradient(180deg, rgba(20, 24, 34, 0.94) 0%, rgba(12, 15, 21, 0.98) 100%);
-  border: 1px solid rgba(212, 168, 83, 0.28);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 10px 28px rgba(0, 0, 0, 0.4);
-  transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  background: var(--theme-surface-dark);
+  border: 1px solid var(--theme-border-dark);
+  box-shadow: 0 8px 22px rgba(2, 6, 23, 0.28);
+  transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease;
 }
 
 .obsidian-card-interactive:hover {
-  border-color: rgba(234, 199, 121, 0.62);
+  border-color: var(--theme-border-dark-hover);
+  transform: translateY(-1px);
 }
 
-/* Chamfered Architectural Gold Frame (matching reference aesthetic) */
+/* Featured Architectural Card */
 .obsidian-chamfer {
   position: relative;
-  background: linear-gradient(180deg, rgba(19, 23, 32, 0.96) 0%, rgba(11, 14, 19, 0.99) 100%);
-  border: 1px solid rgba(212, 168, 83, 0.36);
-  box-shadow:
-    inset 0 1px 0 rgba(234, 199, 121, 0.14),
-    0 16px 36px rgba(0, 0, 0, 0.5);
+  background: var(--theme-surface-dark-elevated);
+  border: 1px solid var(--theme-border-dark-hover);
+  box-shadow: 0 14px 32px rgba(2, 6, 23, 0.42);
 }
 
+/* Primary CTA Button */
 .gold-btn {
-  background: linear-gradient(135deg, #ECC97B 0%, #D4A74E 55%, #BD8D37 100%);
-  color: #090B0E;
+  background: var(--theme-btn-grad);
+  color: var(--theme-btn-ink);
   font-weight: 700;
-  border: 1px solid rgba(255, 233, 180, 0.45);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 6px 18px rgba(212, 168, 83, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--theme-accent) 30%, transparent);
   transition: filter 160ms ease, transform 160ms ease;
 }
 
 .gold-btn:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.07);
 }
 
+/* Secondary Outline Button */
 .gold-outline-btn {
-  background: rgba(15, 19, 27, 0.9);
-  color: #F3EEE3;
-  border: 1px solid rgba(212, 168, 83, 0.42);
+  background: color-mix(in srgb, var(--theme-surface-dark) 92%, transparent);
+  color: #F8FAFC;
+  border: 1px solid var(--theme-border-dark-hover);
   transition: border-color 160ms ease, background-color 160ms ease;
 }
 
 .gold-outline-btn:hover {
-  border-color: rgba(234, 199, 121, 0.8);
-  background: rgba(25, 30, 41, 0.95);
+  border-color: var(--theme-accent-bright);
+  background: var(--theme-surface-dark-elevated);
 }
 
 .gold-text-gradient {
-  background: linear-gradient(180deg, #F8E2AF 0%, #D9AA52 60%, #B88632 100%);
+  background: var(--theme-text-grad-dark);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* Hero surface band */
+.hero-theme-surface {
+  background: radial-gradient(ellipse at top, color-mix(in srgb, var(--theme-accent) 16%, transparent), transparent 65%), var(--theme-canvas-dark);
+}
+
+/* =====================================================================
+   LIGHT MODE: COMPLETE SURFACE, TYPOGRAPHY & CONTRAST ADAPTATION
+   ===================================================================== */
+html.light .obsidian-card,
+html.light .obsidian-card-interactive {
+  background: #FFFFFF;
+  border: 1px solid var(--theme-border-light);
+  box-shadow: 0 2px 12px rgba(11, 26, 51, 0.05);
+  color: #0B1A33;
+}
+
+html.light .obsidian-card-interactive:hover {
+  border-color: var(--theme-border-light-hover);
+  box-shadow: 0 8px 24px rgba(11, 26, 51, 0.08);
+}
+
+html.light .obsidian-chamfer {
+  background: #FFFFFF;
+  border: 1px solid var(--theme-border-light-hover);
+  box-shadow: 0 6px 20px rgba(11, 26, 51, 0.07);
+  color: #0B1A33;
+}
+
+html.light .theme-canvas {
+  background-color: var(--theme-canvas-light);
+  color: #0B1A33;
+}
+
+html.light .theme-surface {
+  background-color: #FFFFFF;
+  color: #0B1A33;
+}
+
+html.light .theme-surface-muted {
+  background-color: var(--theme-surface-light-muted);
+  color: #0B1A33;
+}
+
+html.light .theme-ink {
+  color: #0B1A33;
+}
+
+html.light .theme-ink-muted {
+  color: #334155;
+}
+
+html.light .gold-outline-btn {
+  background: #FFFFFF;
+  color: #0B1A33;
+  border: 1px solid #CBD5E1;
+}
+
+html.light .gold-outline-btn:hover {
+  background: var(--theme-canvas-light);
+  border-color: var(--theme-accent);
+  color: #0B1A33;
+}
+
+html.light .gold-btn {
+  color: var(--theme-btn-ink);
+}
+
+html.light .gold-text-gradient {
+  background: var(--theme-text-grad-light);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Light Mode: Page & Surface Backgrounds */
+html.light .bg-\[\#07090C\],
+html.light .bg-\[\#05070A\],
+html.light .bg-\[\#07090D\],
+html.light .bg-\[\#F8F6F1\] {
+  background-color: var(--theme-canvas-light);
+}
+
+html.light .bg-\[\#090B10\],
+html.light .bg-\[\#090C11\],
+html.light .bg-\[\#0A0D12\],
+html.light .bg-\[\#0B0E14\],
+html.light .bg-\[\#0D1016\],
+html.light .bg-\[\#0D1017\],
+html.light .bg-\[\#0E1117\],
+html.light .bg-\[\#0E1219\] {
+  background-color: #FFFFFF;
+}
+
+html.light .bg-\[\#0A0D12\]\/95 {
+  background-color: rgba(255, 255, 255, 0.96);
+}
+
+html.light .bg-\[\#10141C\],
+html.light .bg-\[\#10141D\],
+html.light .bg-\[\#111621\],
+html.light .bg-\[\#12161F\],
+html.light .bg-\[\#121620\],
+html.light .bg-\[\#121722\],
+html.light .bg-\[\#141822\],
+html.light .bg-\[\#141922\],
+html.light .bg-\[\#141923\],
+html.light .bg-\[\#161B25\],
+html.light .bg-\[\#171C26\],
+html.light .bg-\[\#1D2330\] {
+  background-color: var(--theme-surface-light-muted);
+}
+
+html.light .bg-\[\#1D170B\],
+html.light .bg-\[\#2A200E\]\/45,
+html.light .bg-\[\#2A200E\]\/50,
+html.light .bg-\[\#2A200E\]\/55,
+html.light .bg-\[\#2A200E\]\/70 {
+  background-color: #FFF4EB;
+}
+
+html.light .bg-white\/5,
+html.light .hover\:bg-white\/5:hover {
+  background-color: rgba(11, 26, 51, 0.05);
+}
+
+html.light .bg-white\/10,
+html.light .hover\:bg-white\/10:hover {
+  background-color: rgba(11, 26, 51, 0.09);
+}
+
+html.light .hover\:bg-\[\#1D2330\]:hover {
+  background-color: #E2E8F0;
+}
+
+/* Light Mode: Primary, Secondary, Muted & Theme Accent Typography */
+html.light .text-\[\#F5EFE2\],
+html.light .text-\[\#F3EEE3\],
+html.light .text-\[\#E5E0D5\] {
+  color: #0B1A33;
+}
+
+html.light .hover\:text-\[\#F5EFE2\]:hover,
+html.light .hover\:text-\[\#F3EEE3\]:hover {
+  color: #0B1A33;
+}
+
+html.light .text-\[\#C2C8D3\],
+html.light .text-\[\#B8C0CE\],
+html.light .text-\[\#A5AEBD\] {
+  color: #334155;
+}
+
+html.light .text-\[\#9DA6B5\],
+html.light .text-\[\#8C95A4\],
+html.light .text-\[\#7D8696\],
+html.light .text-\[\#6E7787\] {
+  color: #526075;
+}
+
+html.light .text-\[\#EAC779\],
+html.light .text-\[\#E6C16E\],
+html.light .text-\[\#F2D184\],
+html.light .text-\[\#D4A853\],
+html.light .text-\[\#8C6118\],
+html.light .text-\[\#7C5616\],
+html.light .text-\[\#9A7229\] {
+  color: var(--theme-accent-light-ink);
+}
+
+html.light .hover\:text-\[\#EAC779\]:hover {
+  color: var(--theme-accent-light-hover);
+}
+
+html.light .placeholder\:text-\[\#6E7787\]::placeholder,
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #64748B;
+}
+
+html.light .disabled\:bg-\[\#0D1016\]:disabled {
+  background-color: #F1F5F9;
+}
+
+html.light .disabled\:text-\[\#6E7787\]:disabled {
+  color: #94A3B8;
+}
+
+/* Light Mode: Borders & Dividers */
+html.light .border-\[\#D4A853\]\/12,
+html.light .border-\[\#D4A853\]\/15,
+html.light .border-\[\#D4A853\]\/18,
+html.light .border-\[\#D4A853\]\/20,
+html.light .border-\[\#D4A853\]\/22,
+html.light .border-\[\#D4A853\]\/25,
+html.light .border-\[\#D4A853\]\/28,
+html.light .border-\[\#D4A853\]\/30 {
+  border-color: var(--theme-border-light);
+}
+
+html.light .border-\[\#D4A853\]\/35,
+html.light .border-\[\#D4A853\]\/40,
+html.light .border-\[\#D4A853\]\/45,
+html.light .border-\[\#D4A853\]\/50 {
+  border-color: color-mix(in srgb, var(--theme-accent) 42%, #CBD5E1);
+}
+
+html.light .border-\[\#EAC779\],
+html.light .hover\:border-\[\#EAC779\]:hover {
+  border-color: var(--theme-accent);
+}
+
+html.light .bg-\[\#D4A853\] {
+  background-color: var(--theme-accent);
+  color: var(--theme-btn-ink);
+}
+
+html.light .bg-\[\#D4A853\]\/10,
+html.light .bg-\[\#D4A853\]\/12,
+html.light .bg-\[\#D4A853\]\/15,
+html.light .bg-\[\#D4A853\]\/20 {
+  background-color: color-mix(in srgb, var(--theme-accent) 11%, #FFFFFF);
+}
+
+/* Light Mode: Semantic Status Pills, Alerts & Badges (High Contrast) */
+html.light .bg-emerald-950\/40,
+html.light .bg-emerald-950\/45,
+html.light .bg-emerald-950\/50,
+html.light .bg-emerald-950\/60,
+html.light .bg-emerald-900\/60 {
+  background-color: #ECFDF5;
+}
+
+html.light .text-emerald-200,
+html.light .text-emerald-200\/90,
+html.light .text-emerald-300,
+html.light .text-emerald-400 {
+  color: #065F46;
+}
+
+html.light .bg-rose-950\/30,
+html.light .bg-rose-950\/40,
+html.light .bg-rose-950\/50,
+html.light .bg-rose-950\/60,
+html.light .bg-rose-950\/70,
+html.light .bg-rose-900\/60,
+html.light .bg-rose-900\/80 {
+  background-color: #FFF1F2;
+}
+
+html.light .text-rose-200,
+html.light .text-rose-300,
+html.light .text-rose-400 {
+  color: #9F1239;
+}
+
+html.light .hover\:bg-rose-950\/60:hover,
+html.light .hover\:bg-rose-900\/80:hover {
+  background-color: #FFE4E6;
+}
+
+html.light .hover\:text-rose-200:hover,
+html.light .hover\:text-white:hover {
+  color: #881337;
+}
+
+html.light .bg-amber-950\/45,
+html.light .bg-amber-500\/10,
+html.light .bg-amber-500\/15 {
+  background-color: #FFFBEB;
+}
+
+html.light .text-amber-200,
+html.light .text-amber-300,
+html.light .text-amber-400 {
+  color: #92400E;
+}
+
+html.light .bg-sky-950\/50,
+html.light .bg-sky-950\/60,
+html.light .bg-sky-500\/15 {
+  background-color: #F0F9FF;
+}
+
+html.light .text-sky-200,
+html.light .text-sky-300,
+html.light .text-sky-400 {
+  color: #075985;
+}
+
+html.light .text-violet-300,
+html.light .text-violet-400 {
+  color: #5B21B6;
+}
+
+html.light .text-indigo-300 {
+  color: #3730A3;
+}
+
+html.light .bg-slate-800\/70,
+html.light .bg-slate-900\/80 {
+  background-color: #F1F5F9;
+}
+
+html.light .text-slate-300 {
+  color: #334155;
+}
+
+/* =====================================================================
+   APEX ACADEMY SIGNATURE ARCHITECTURAL ELEMENTS (Light Mode)
+   Matches reference screenshot: Deep Oxford Navy Hero, Featured Navy Cards,
+   Navy Table Headers, Navy Sidebar, Navy Footer + Crisp White Cards & Orange CTAs
+   ===================================================================== */
+
+/* 1. Signature Deep Oxford Navy Hero Band */
+html.light[data-theme-preset="apex-academy"] .hero-theme-surface {
+  background: linear-gradient(180deg, #0B1A33 0%, #102344 100%);
+  color: #FFFFFF;
+  border-bottom-color: rgba(245, 124, 31, 0.25);
+}
+
+html.light[data-theme-preset="apex-academy"] .hero-theme-surface > div > div:first-child h1,
+html.light[data-theme-preset="apex-academy"] .hero-theme-surface .hero-headline {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: #FFFFFF;
+}
+
+html.light[data-theme-preset="apex-academy"] .hero-theme-surface .hero-kicker {
+  color: #FF9233;
+}
+
+html.light[data-theme-preset="apex-academy"] .hero-theme-surface .hero-subheadline {
+  color: #CBD5E1;
+}
+
+html.light[data-theme-preset="apex-academy"] .hero-theme-surface > div > div > .gold-outline-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+html.light[data-theme-preset="apex-academy"] .hero-theme-surface > div > div > .gold-outline-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: #FF9233;
+  color: #FFFFFF;
+}
+
+/* 2. Signature Deep Oxford Navy Featured Cards (.obsidian-chamfer) */
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer {
+  background: linear-gradient(180deg, #0D1E3A 0%, #0B1A33 100%);
+  border: 1px solid rgba(245, 124, 31, 0.45);
+  box-shadow: 0 14px 32px rgba(11, 26, 51, 0.22);
+  color: #FFFFFF;
+}
+
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .text-\[\#F5EFE2\],
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .text-\[\#F3EEE3\],
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .text-\[\#E5E0D5\] {
+  color: #FFFFFF;
+}
+
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .text-\[\#C2C8D3\],
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .text-\[\#B8C0CE\],
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .text-\[\#A5AEBD\] {
+  color: #CBD5E1;
+}
+
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .text-\[\#9DA6B5\],
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .text-\[\#8C95A4\],
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .text-\[\#7D8696\] {
+  color: #94A3B8;
+}
+
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .text-\[\#EAC779\],
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .text-\[\#D4A853\],
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .text-\[\#E6C16E\] {
+  color: #FF9233;
+}
+
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .gold-text-gradient {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: #FFFFFF;
+}
+
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .bg-\[\#141822\],
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .bg-\[\#0A0D12\],
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .bg-\[\#12161F\],
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .bg-\[\#161B25\] {
+  background-color: #152B50;
+}
+
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .gold-outline-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+html.light[data-theme-preset="apex-academy"] .obsidian-chamfer .gold-outline-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: #FF9233;
+  color: #FFFFFF;
+}
+
+/* 3. Signature Deep Oxford Navy Table Headers (like Apex Batch Timings table) */
+html.light[data-theme-preset="apex-academy"] table thead {
+  background-color: #0B1A33;
+  color: #FFFFFF;
+}
+
+html.light[data-theme-preset="apex-academy"] table thead th {
+  color: #FFFFFF;
+}
+
+/* 4. Signature Deep Oxford Navy Footer */
+html.light[data-theme-preset="apex-academy"] .site-footer {
+  background-color: #0B1A33;
+  color: #CBD5E1;
+  border-top-color: rgba(148, 163, 184, 0.2);
+}
+
+html.light[data-theme-preset="apex-academy"] .site-footer h3,
+html.light[data-theme-preset="apex-academy"] .site-footer .gold-text-gradient {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: #FFFFFF;
+}
+
+html.light[data-theme-preset="apex-academy"] .site-footer p,
+html.light[data-theme-preset="apex-academy"] .site-footer a,
+html.light[data-theme-preset="apex-academy"] .site-footer li {
+  color: #CBD5E1;
+}
+
+html.light[data-theme-preset="apex-academy"] .site-footer a:hover {
+  color: #FF9233;
+}
+
+/* 5. Signature Deep Oxford Navy Dashboard & Admin Sidebar */
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar {
+  background-color: #0B1A33;
+  color: #F8FAFC;
+  border-right-color: rgba(148, 163, 184, 0.2);
+}
+
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar .bg-\[\#0D1017\],
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar .bg-\[\#07090D\],
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar .bg-\[\#121620\] {
+  background-color: #112344;
+}
+
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar .text-\[\#F5EFE2\],
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar .text-\[\#F3EEE3\] {
+  color: #FFFFFF;
+}
+
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar .text-\[\#B8C0CE\] {
+  color: #CBD5E1;
+}
+
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar .text-\[\#8C95A4\] {
+  color: #94A3B8;
+}
+
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar .text-\[\#EAC779\],
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar .text-\[\#D4A853\] {
+  color: #FF9233;
+}
+
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar .gold-text-gradient {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: #FFFFFF;
+}
+
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar .hover\:bg-white\/5:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+html.light[data-theme-preset="apex-academy"] .dashboard-sidebar .hover\:text-\[\#F5EFE2\]:hover {
+  color: #FFFFFF;
+}
+
+/* Subtle warm orange icon tiles on light white cards in Apex Academy */
+html.light[data-theme-preset="apex-academy"] .obsidian-card .bg-\[\#141822\],
+html.light[data-theme-preset="apex-academy"] .obsidian-card-interactive .bg-\[\#141822\] {
+  background-color: #FFF4EB;
+  border-color: rgba(245, 124, 31, 0.24);
 }
 
 /* Custom utility for balanced headlines without orphans */
@@ -123,11 +930,11 @@
   text-wrap: balance;
 }
 
-/* Print / PDF export rules for Question Paper Preview (always crisp ink on white paper) */
+/* Print / PDF export rules for Question Paper Preview & OMR Sheet (always crisp ink on white paper) */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 14mm 15mm;
+    margin: 12mm 14mm;
   }
 
   html,
@@ -135,6 +942,7 @@
     background: #ffffff !important;
     color: #000000 !important;
     color-scheme: light !important;
+    font-size: 16px !important;
   }
 
   .no-print {
@@ -150,8 +958,24 @@
     width: 100% !important;
   }
 
+  .print-page-break {
+    break-before: page;
+    page-break-before: always;
+  }
+
   .print-avoid-break {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  body.printing-slides-mode {
+    background: #07090C !important;
+  }
+
+  .print-slide-page {
+    break-after: page;
+    page-break-after: always;
+    width: 100vw !important;
+    height: 100vh !important;
   }
 }

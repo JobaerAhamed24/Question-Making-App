@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>/academic</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>/admission</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>/learning</loc><changefreq>daily</changefreq><priority>0.95</priority></url>
+  <url><loc>/kids-game</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>/learning/class-8/mathematics/chapter-3/exercise-3-1/problem-1</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>/learning/class-8/mathematics/chapter-3/exercise-3-1/problem-2</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>/learning/class-6/mathematics/chapter-1/exercise-1-3/problem-1</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>/learning/class-9-10/higher-mathematics/chapter-8/exercise-8-1/problem-1</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>/learning/class-9-10/physics/chapter-2/exercise-2-1/problem-1</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>/learning/class-11-12/chemistry/chapter-4/exercise-4-2/problem-1</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>/learning/admission/engineering/parabola-tangent-1</loc><changefreq>monthly</changefreq><priority>0.85</priority></url>
+</urlset>

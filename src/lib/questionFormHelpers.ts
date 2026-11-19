@@ -71,6 +71,16 @@ export const QUESTION_TYPE_META: Record<
     helperTextBn: 'চিত্র আপলোড করুন বা বিল্ট-ইন ডায়াগ্রাম বেছে নিয়ে প্রশ্ন তৈরি করুন।',
     marksPresets: [2, 4, 5],
   },
+  broad: {
+    shortLabelBn: 'রচনামূলক / বর্ণনামূলক',
+    helperTextBn: 'বিস্তারিত বর্ণনামূলক বা রচনামূলক প্রশ্ন ও মূল্যায়ন নির্দেশনা লিখুন।',
+    marksPresets: [5, 8, 10],
+  },
+  matching: {
+    shortLabelBn: 'মিলকরণ (Matching)',
+    helperTextBn: 'বাম ও ডান কলামের উপাদান এবং সঠিক মিলকরণ উত্তর যুক্ত করুন।',
+    marksPresets: [4, 5],
+  },
 };
 
 export function createDefaultMcqOptions(style: 'bn' | 'en' = 'bn'): QuestionOption[] {

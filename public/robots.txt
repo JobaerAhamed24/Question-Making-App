@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /learning
+Allow: /kids-game
+Allow: /academic
+Allow: /admission
+Disallow: /admin
+Disallow: /dashboard
+
+Sitemap: /sitemap.xml

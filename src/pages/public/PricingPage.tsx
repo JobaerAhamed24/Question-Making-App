@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { PLAN_TRANSLATIONS_BN, toBanglaDigits } from '../../lib/bn';
 import { useAuth } from '../../contexts/AuthContext';
 import { questionBankService } from '../../services/questionBankService';
@@ -19,6 +19,8 @@ export function PricingPage() {
       : plans.filter((p) => p.includedClassIds.includes(selectedClassFilter));
 
   const getClassName = (id: string) => classes.find((c) => c.id === id)?.nameBn || id;
+  const featuredPlan = plans[plans.length - 1] || plans[0];
+  const featuredBn = featuredPlan ? PLAN_TRANSLATIONS_BN[featuredPlan.id] : undefined;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 font-bangla">
@@ -124,6 +126,52 @@ export function PricingPage() {
           );
         })}
       </div>
+
+      {/* সর্বাধিক জনপ্রিয় প্যাকেজ হাইলাইট */}
+      {featuredPlan && (
+        <div className="mt-10 obsidian-chamfer rounded-xl p-6 lg:p-8">
+          <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12">
+            <div className="lg:col-span-5 space-y-2">
+              <p className="text-xs font-bold tracking-widest text-[#D4A853]">
+                সর্বাধিক জনপ্রিয় প্যাকেজ
+              </p>
+              <h3 className="font-bangla text-2xl font-bold gold-text-gradient">
+                {featuredPlan.nameBn || featuredPlan.name}
+              </h3>
+              <p className="text-sm text-[#B8C0CE] leading-relaxed">
+                {featuredBn?.desc || featuredPlan.description}
+              </p>
+            </div>
+
+            <div className="lg:col-span-4 space-y-2 text-sm text-[#E5E0D5]">
+              {(featuredBn?.features || featuredPlan.features).slice(0, 4).map((f) => (
+                <div key={f} className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-[#EAC779] shrink-0" />
+                  <span>{f}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="lg:col-span-3 flex flex-col items-start lg:items-end justify-center gap-3">
+              <div className="tabular-nums lg:text-right">
+                <p className="text-3xl font-bold gold-text-gradient">
+                  ৳{toBanglaDigits(featuredPlan.priceBdt.toLocaleString())}
+                </p>
+                <p className="text-xs text-[#9DA6B5]">
+                  মেয়াদ {toBanglaDigits(featuredPlan.durationDays)} দিন
+                </p>
+              </div>
+              <Link
+                to={`/dashboard/payments/new?planId=${featuredPlan.id}`}
+                className="inline-flex w-full lg:w-auto items-center justify-center gap-2 rounded-lg gold-btn px-6 py-2.5 text-sm font-bold"
+              >
+                <span>এখনই শুরু করুন</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* গুরুত্বপূর্ণ নীতিমালা */}
       <div className="mt-12 obsidian-chamfer rounded-xl p-6">

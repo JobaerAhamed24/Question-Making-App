@@ -28,6 +28,7 @@ import {
   StatusTag,
   Textarea,
 } from '../../components/ui/Primitives';
+import { getSubjectsForClassAndGroup } from '../../data/curriculumData';
 import { GEOMETRY_TRIANGLE_SVG, PHYSICS_CIRCUIT_SVG } from '../../data/seedData';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -640,8 +641,11 @@ export function AdminQuestionFormPage() {
 
   const selectedClass = state.classes.find((c) => c.id === classId);
   const classGroups = state.groups.filter((g) => g.classId === classId);
-  const classSubjects = state.subjects.filter(
-    (s) => s.classId === classId && (!groupId || !s.groupId || s.groupId === groupId)
+  const classSubjects = getSubjectsForClassAndGroup(
+    state.subjects,
+    selectedClass,
+    groupId || null,
+    true
   );
   const subjectChapters = state.chapters.filter((c) => c.subjectId === subjectId);
   const chapterTopics = state.topics.filter((t) => t.chapterId === chapterId);
@@ -915,9 +919,13 @@ export function AdminQuestionFormPage() {
                     onChange={(e) => {
                       const nextGrp = e.target.value;
                       setGroupId(nextGrp);
-                      const firstSub = state.subjects.find(
-                        (s) => s.classId === classId && (!nextGrp || !s.groupId || s.groupId === nextGrp)
+                      const matched = getSubjectsForClassAndGroup(
+                        state.subjects,
+                        selectedClass,
+                        nextGrp || null,
+                        true
                       );
+                      const firstSub = matched[0];
                       if (firstSub) {
                         setSubjectId(firstSub.id);
                         const firstCh = state.chapters.find((c) => c.subjectId === firstSub.id);

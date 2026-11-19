@@ -1,34 +1,41 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   BookOpen,
   Check,
+  Clock,
   FileSpreadsheet,
   FileText,
   Filter,
+  Gamepad2,
   GraduationCap,
-  Layers,
+  Library,
+  Presentation,
+  Radio,
   ShieldCheck,
+  Trophy,
 } from 'lucide-react';
 import {
   FAQ_TRANSLATIONS_BN,
   NOTICE_TRANSLATIONS_BN,
-  PLAN_TRANSLATIONS_BN,
   toBanglaDigits,
 } from '../../lib/bn';
 import { useAuth } from '../../contexts/AuthContext';
+import { examService, type ExamSummary } from '../../services/examService';
+import { profileService } from '../../services/profileService';
 import { questionBankService } from '../../services/questionBankService';
+import type { LeaderboardEntry } from '../../types/domain';
 
 function SectionDivider({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="text-center max-w-3xl mx-auto">
       <div className="flex items-center justify-center gap-4">
-        <span className="hidden sm:block h-px flex-1 max-w-[140px] bg-gradient-to-r from-transparent to-[#D4A853]/65" />
+        <span className="hidden sm:block h-px flex-1 max-w-[140px] section-divider-line" />
         <h2 className="font-bangla text-2xl sm:text-3xl font-bold tracking-tight gold-text-gradient">
           {title}
         </h2>
-        <span className="hidden sm:block h-px flex-1 max-w-[140px] bg-gradient-to-l from-transparent to-[#D4A853]/65" />
+        <span className="hidden sm:block h-px flex-1 max-w-[140px] section-divider-line" />
       </div>
       {subtitle && (
         <p className="mt-2.5 text-base text-[#B8C0CE] leading-relaxed">{subtitle}</p>
@@ -38,18 +45,314 @@ function SectionDivider({ title, subtitle }: { title: string; subtitle?: string 
 }
 
 export function HomePage() {
-  const { revision } = useAuth();
-  const { classes, subjects, plans, faqs, notices, questionTypes } = React.useMemo(
+  const { user, revision } = useAuth();
+  const { classes, subjects, faqs, notices, siteSettings } = React.useMemo(
     () => questionBankService.getPublicSiteData(),
     [revision]
   );
 
-  const featuredPlan = plans[plans.length - 1] || plans[0];
-  const featuredBn = featuredPlan ? PLAN_TRANSLATIONS_BN[featuredPlan.id] : undefined;
+  const [liveExams, setLiveExams] = useState<ExamSummary[]>([]);
+  const [topStudents, setTopStudents] = useState<LeaderboardEntry[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      examService.listExams({ status: 'live' }),
+      profileService.getLeaderboard(),
+    ]).then(([exRes, lbRes]) => {
+      if (!active) return;
+      setLiveExams(exRes.exams.slice(0, 2));
+      setTopStudents(lbRes.entries.slice(0, 3));
+    });
+    return () => {
+      active = false;
+    };
+  }, [revision]);
+
+  const paperTarget = '/academic';
+
+  const coreFeatures = [
+    {
+      id: 'paper-maker',
+      label: '০১ • প্রশ্নপত্র স্টুডিও',
+      title: 'প্রশ্নপত্র তৈরি',
+      subtitle: 'Academic & Admission Builder',
+      description:
+        'কেন্দ্রীয় প্রশ্নব্যাংক থেকে শ্রেণি ১–১২ বা ভর্তি পরীক্ষার অধ্যায়, টপিক, বোর্ড ও সাল অনুযায়ী প্রশ্ন বাছাই করে প্রিন্ট-উপযোগী A4 প্রশ্নপত্র, OMR শিট ও .DOCX তৈরি করুন।',
+      highlights: [
+        'একাডেমিক (১–১২) ও বিশ্ববিদ্যালয়/বুয়েট/মেডিকেল ভর্তি প্রশ্নব্যাংক',
+        'বোর্ড (২০১০–২০২৬), কঠিনতা ও ৯ ধরনের প্রশ্ন ফিল্টার',
+        'সম্পাদনাযোগ্য ডকুমেন্ট এডিটর, OMR শিট, PDF ও .DOCX এক্সপোর্ট',
+      ],
+      ctaLabel: 'একাডেমিক প্রশ্নপত্র তৈরি করুন',
+      ctaTo: paperTarget,
+      icon: <FileText className="h-6 w-6" />,
+      featured: false,
+    },
+    {
+      id: 'slide-maker',
+      label: '০২ • অটো প্রেজেন্টেশন',
+      title: 'স্লাইড তৈরি',
+      subtitle: 'Auto Slide Maker',
+      description:
+        '১০ থেকে ১০০টি MCQ পেস্ট করে বা প্রশ্নব্যাংক থেকে এনে কয়েক সেকেন্ডে প্রশ্ন ও আলাদা উত্তর-রিভিল স্লাইড তৈরি করুন ও .PPTX হিসেবে ডাউনলোড করুন।',
+      highlights: [
+        '৫টি প্রফেশনাল টেমপ্লেট ও কাস্টম কালার/ফন্ট',
+        '16:9, 16:10, 4:3 লাইভ প্রিভিউ ও স্লাইড এডিটর',
+        'সম্পাদনাযোগ্য PowerPoint (.pptx) ও PDF এক্সপোর্ট',
+      ],
+      ctaLabel: 'স্লাইড মেকার খুলুন',
+      ctaTo: '/slides',
+      icon: <Presentation className="h-6 w-6" />,
+      featured: true,
+    },
+    {
+      id: 'live-exam',
+      label: '০৩ • রিয়েল-টাইম মূল্যায়ন',
+      title: 'লাইভ পরীক্ষা',
+      subtitle: 'Live Exam System',
+      description:
+        'প্রশ্নব্যাংক থেকে ১০–১০০টি র‍্যান্ডম বা বাছাইকৃত MCQ নিয়ে চর্চা-স্টাইল টাইমড লাইভ পরীক্ষা তৈরি করুন, ফলাফল দেখুন ও লিডারবোর্ডে অংশ নিন।',
+      highlights: [
+        'লাইভ কাউন্টডাউন টাইমার ও রিভিউ ফ্ল্যাগিং',
+        'ঐচ্ছিক নেগেটিভ মার্কিং ও প্রাইভেট অ্যাক্সেস কোড',
+        'তাৎক্ষণিক উত্তর বিশ্লেষণ ও পাবলিক প্রোফাইল',
+      ],
+      ctaLabel: 'লাইভ পরীক্ষায় অংশ নিন',
+      ctaTo: '/exams',
+      icon: <Radio className="h-6 w-6" />,
+      featured: false,
+    },
+  ];
 
   return (
     <div className="font-bangla bg-[#07090C] text-[#F3EEE3]">
-      {/* ৩-কলাম অ্যানালিটিক্যাল শোকেস (রেফারেন্স Bento কার্ড স্টাইল অনুযায়ী) */}
+      {/* Hero & Three Core Feature Pillars */}
+      <section className="hero-theme-surface relative border-b border-[#D4A853]/20">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:py-18 sm:px-6 space-y-12">
+          <div className="max-w-3xl mx-auto text-center space-y-4">
+            <p className="hero-kicker text-xs font-mono font-bold tracking-[0.22em] text-[#D4A853] uppercase">
+              ALL-IN-ONE ACADEMIC WORKSPACE
+            </p>
+            <h1 className="hero-headline font-display text-3xl sm:text-5xl font-bold tracking-tight text-balance gold-text-gradient leading-[1.18]">
+              {siteSettings.heroHeadline || 'প্রশ্নপত্র তৈরি, স্লাইড তৈরি ও লাইভ পরীক্ষা — এক প্ল্যাটফর্মে'}
+            </h1>
+            <p className="hero-subheadline text-base sm:text-lg text-[#C2C8D3] leading-relaxed max-w-2xl mx-auto">
+              {siteSettings.heroSubheadline ||
+                'একটি কেন্দ্রীয় প্রশ্নব্যাংক থেকে নিমেষেই তৈরি করুন প্রিন্ট-রেডি প্রশ্নপত্র, আকর্ষণীয় MCQ প্রেজেন্টেশন স্লাইড এবং সময়সীমা-ভিত্তিক লাইভ অনলাইন পরীক্ষা।'}
+            </p>
+          </div>
+
+          {/* 3 Main Feature Cards */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {coreFeatures.map((feat) => (
+              <div
+                key={feat.id}
+                className={`rounded-xl p-6 flex flex-col justify-between space-y-6 transition-all ${
+                  feat.featured
+                    ? 'obsidian-chamfer'
+                    : 'obsidian-card-interactive'
+                }`}
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs font-mono font-bold text-[#D4A853]">
+                      {feat.label}
+                    </span>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#D4A853]/40 bg-[#141822] text-[#EAC779] shrink-0">
+                      {feat.icon}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h2 className="font-display text-2xl font-bold text-[#F5EFE2]">
+                      {feat.title}
+                    </h2>
+                    <p className="text-xs font-mono text-[#9DA6B5] mt-0.5">{feat.subtitle}</p>
+                  </div>
+
+                  <p className="text-sm text-[#C2C8D3] leading-relaxed">{feat.description}</p>
+
+                  <ul className="space-y-2 border-t border-[#D4A853]/15 pt-4 text-sm text-[#E5E0D5]">
+                    {feat.highlights.map((item) => (
+                      <li key={item} className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-[#EAC779] shrink-0 mt-0.5" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <Link
+                  to={feat.ctaTo}
+                  className={`flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold transition-all ${
+                    feat.featured ? 'gold-btn' : 'gold-outline-btn hover:border-[#EAC779]'
+                  }`}
+                >
+                  <span>{feat.ctaLabel}</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            ))}
+          </div>
+          {/* 4-Pillar Platform Navigation Strip */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 pt-2">
+            {[
+              {
+                to: '/academic',
+                icon: <BookOpen className="h-5 w-5" />,
+                title: 'একাডেমিক (শ্রেণি ১–১২)',
+                desc: 'অধ্যায় ও টপিকভিত্তিক বোর্ড প্রশ্নপত্র বিল্ডার ও OMR শিট।',
+              },
+              {
+                to: '/admission',
+                icon: <GraduationCap className="h-5 w-5" />,
+                title: 'ভর্তি পরীক্ষা বিল্ডার',
+                desc: 'বিশ্ববিদ্যালয়, প্রকৌশল (BUET) ও মেডিকেল ভর্তি প্রশ্নপত্র।',
+              },
+              {
+                to: '/learning',
+                icon: <Library className="h-5 w-5" />,
+                title: 'ফ্রি লার্নিং হাব',
+                desc: 'গণিত, উচ্চতর গণিত, পদার্থবিজ্ঞান ও রসায়নের ধাপে ধাপে সমাধান ও ভিডিও।',
+              },
+              {
+                to: '/kids-game',
+                icon: <Gamepad2 className="h-5 w-5" />,
+                title: 'কিডস ম্যাথ গেম',
+                desc: 'ছোটদের জন্য মজার যোগ, বিয়োগ, গুণ ও ভাগের পাঠ ও খেলা।',
+              },
+            ].map((mod) => (
+              <Link
+                key={mod.to}
+                to={mod.to}
+                className="obsidian-card-interactive rounded-xl p-4 flex flex-col justify-between gap-3 group"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#D4A853]/35 bg-[#141822] text-[#EAC779] shrink-0">
+                    {mod.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-bold text-[#F5EFE2] group-hover:text-[#EAC779] transition-colors">
+                      {mod.title}
+                    </h3>
+                    <p className="mt-1 text-xs text-[#9DA6B5] leading-relaxed">{mod.desc}</p>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#D4A853]">
+                  প্রবেশ করুন <ArrowRight className="h-3.5 w-3.5" />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Live Exam & Top Leaderboard Highlight Strip */}
+      {(liveExams.length > 0 || topStudents.length > 0) && (
+        <section className="border-b border-[#D4A853]/20 bg-[#0A0D12] py-14">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 grid grid-cols-1 gap-8 lg:grid-cols-12">
+            {/* Active Live Exams */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-mono font-bold text-[#D4A853]">LIVE SESSIONS</p>
+                  <h2 className="font-display text-2xl font-bold text-[#F5EFE2]">
+                    চলমান লাইভ পরীক্ষাসমূহ
+                  </h2>
+                </div>
+                <Link
+                  to="/exams"
+                  className="text-sm font-semibold text-[#EAC779] hover:underline whitespace-nowrap"
+                >
+                  সব পরীক্ষা দেখুন →
+                </Link>
+              </div>
+
+              <div className="space-y-3">
+                {liveExams.map((exam) => (
+                  <div
+                    key={exam.id}
+                    className="obsidian-card-interactive rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <h3 className="text-base font-bold text-[#F5EFE2] truncate">{exam.title}</h3>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-[#9DA6B5] tabular-nums">
+                        <span className="inline-flex items-center gap-1">
+                          <BookOpen className="h-3.5 w-3.5 text-[#D4A853]" />
+                          {toBanglaDigits(exam.questionIds.length)}টি MCQ
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5 text-[#D4A853]" />
+                          {toBanglaDigits(exam.durationMinutes)} মিনিট
+                        </span>
+                        <span>অংশগ্রহণ: {toBanglaDigits(exam.participantCount)} জন</span>
+                      </div>
+                    </div>
+
+                    <Link
+                      to={exam.accessMode === 'private' ? '/exams' : `/exams/${exam.id}/take`}
+                      className="rounded-lg gold-btn px-4 py-2 text-xs font-bold whitespace-nowrap shrink-0 text-center"
+                    >
+                      {exam.accessMode === 'private' ? 'কোড দিয়ে প্রবেশ' : 'অংশ নিন'}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Top 3 Leaderboard Snapshot */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-mono font-bold text-[#D4A853]">TOP PERFORMERS</p>
+                  <h2 className="font-display text-2xl font-bold text-[#F5EFE2]">
+                    শীর্ষ ৩ শিক্ষার্থী
+                  </h2>
+                </div>
+                <Link
+                  to="/leaderboard"
+                  className="text-sm font-semibold text-[#EAC779] hover:underline whitespace-nowrap"
+                >
+                  পূর্ণ তালিকা →
+                </Link>
+              </div>
+
+              <div className="obsidian-card rounded-xl divide-y divide-[#D4A853]/15">
+                {topStudents.map((st) => (
+                  <Link
+                    key={st.userId}
+                    to={`/students/${st.userId}`}
+                    className="p-4 flex items-center justify-between gap-3 hover:bg-white/[0.03] transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="h-8 w-8 rounded-lg border border-[#D4A853]/40 bg-[#141822] text-sm font-mono font-bold text-[#EAC779] flex items-center justify-center shrink-0 tabular-nums">
+                        #{toBanglaDigits(st.rank)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-[#F5EFE2] truncate">{st.fullName}</p>
+                        <p className="text-xs text-[#9DA6B5] truncate">
+                          {st.institution || st.className || 'শিক্ষার্থী'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 tabular-nums">
+                      <p className="text-sm font-bold text-[#EAC779]">
+                        {toBanglaDigits(st.totalScore)} নম্বর
+                      </p>
+                      <p className="text-xs text-emerald-400">
+                        {toBanglaDigits(st.averagePercent)}% গড়
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ৩-কলাম অ্যানালিটিক্যাল শোকেস */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 space-y-10">
         <SectionDivider
           title="নির্ভুল অধ্যয়ন ও প্রশ্নপত্র স্টুডিও"
@@ -72,12 +375,12 @@ export function HomePage() {
               </div>
               <div className="mt-5 grid grid-cols-2 gap-4 border-t border-[#D4A853]/15 pt-4">
                 <div>
-                  <p className="text-2xl font-bold gold-text-gradient tabular-nums">{toBanglaDigits(classes.length)} স্তর</p>
-                  <p className="text-xs text-[#9DA6B5]">ষষ্ঠ থেকে এসএসসি</p>
+                  <p className="text-2xl font-bold gold-text-gradient tabular-nums">{toBanglaDigits(classes.length)} শ্রেণি</p>
+                  <p className="text-xs text-[#9DA6B5]">প্রথম থেকে দ্বাদশ (১–১২)</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold gold-text-gradient tabular-nums">{toBanglaDigits(subjects.length)} বিষয়</p>
-                  <p className="text-xs text-[#9DA6B5]">বাংলা ও ইংরেজি মাধ্যম</p>
+                  <p className="text-xs text-[#9DA6B5]">NCTB পাঠ্যক্রম অনুযায়ী</p>
                 </div>
               </div>
             </div>
@@ -90,15 +393,15 @@ export function HomePage() {
             </Link>
           </div>
 
-          {/* কার্ড ২: কভারেজ ও গতিবেগ প্রোগ্রেস বার (রেফারেন্স মধ্যম অ্যানালিটিক কার্ড অনুযায়ী) */}
+          {/* কার্ড ২: কভারেজ ও গতিবেগ প্রোগ্রেস বার */}
           <div className="obsidian-chamfer rounded-xl p-5 flex flex-col justify-between space-y-5">
             <div>
               <p className="text-center text-sm font-bold tracking-wide text-[#EAC779]">
-                প্রশ্নপত্র জেনারেটর দক্ষতা
+                প্রশ্নপত্র ও স্লাইড দক্ষতা
               </p>
               <div className="mx-auto mt-5 flex h-36 w-36 flex-col items-center justify-center rounded-full border-2 border-[#D4A853]/65 bg-[#0A0D12] shadow-[inset_0_0_24px_rgba(212,168,83,0.18)]">
                 <span className="text-3xl font-bold gold-text-gradient tabular-nums">১০০%</span>
-                <span className="mt-0.5 text-xs font-semibold text-[#C2C8D3]">স্বয়ংক্রিয় নম্বর</span>
+                <span className="mt-0.5 text-xs font-semibold text-[#C2C8D3]">কেন্দ্রীয় প্রশ্নব্যাংক</span>
               </div>
 
               <div className="mt-6 space-y-3.5 text-sm">
@@ -113,11 +416,11 @@ export function HomePage() {
                 </div>
                 <div>
                   <div className="flex justify-between text-xs text-[#C2C8D3] mb-1.5">
-                    <span>অধ্যায় ও টপিক কভারেজ</span>
-                    <span className="font-mono text-[#EAC779] tabular-nums">৯২%</span>
+                    <span>স্লাইড ও লাইভ পরীক্ষা ইন্টিগ্রেশন</span>
+                    <span className="font-mono text-[#EAC779] tabular-nums">৯৫%</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-[#171C26] overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-[#B88632] to-[#EAC779] w-[92%]" />
+                    <div className="h-full rounded-full bg-gradient-to-r from-[#B88632] to-[#EAC779] w-[95%]" />
                   </div>
                 </div>
                 <div>
@@ -142,29 +445,29 @@ export function HomePage() {
               <div className="mt-4 rounded-lg border border-[#D4A853]/25 bg-[#090B10] p-4 space-y-3">
                 <div className="flex items-center gap-2.5 text-[#EAC779]">
                   <Filter className="h-4 w-4 shrink-0" />
-                  <span className="text-sm font-semibold text-[#F5EFE2]">তাৎক্ষণিক বহু-স্তর ফিল্টার</span>
+                  <span className="text-sm font-semibold text-[#F5EFE2]">এক উৎস, তিন আউটপুট</span>
                 </div>
                 <p className="text-sm text-[#B8C0CE] leading-relaxed">
-                  শ্রেণি, বিভাগ, বিষয়, অধ্যায়, টপিক, প্রশ্নের ধরন, কঠিনতা এবং নম্বর অনুযায়ী মুহূর্তেই প্রশ্ন বাছাই।
+                  একই প্রশ্নব্যাংক থেকে বাছাইকৃত প্রশ্ন দিয়ে প্রশ্নপত্র, ক্লাস স্লাইড ও লাইভ পরীক্ষা তৈরি করুন।
                 </p>
               </div>
 
               <div className="mt-5 grid grid-cols-2 gap-4 text-center">
                 <div className="rounded-lg border border-[#D4A853]/20 bg-[#0A0D12] p-3">
                   <p className="text-xl font-bold text-[#F5EFE2] tabular-nums">A4 প্রিন্ট</p>
-                  <p className="mt-0.5 text-xs text-[#9DA6B5]">পিডিএফ ও প্রিন্ট</p>
+                  <p className="mt-0.5 text-xs text-[#9DA6B5]">প্রশ্নপত্র ও উত্তর</p>
                 </div>
                 <div className="rounded-lg border border-[#D4A853]/20 bg-[#0A0D12] p-3">
                   <p className="text-xl font-bold text-[#F5EFE2] tabular-nums">.DOCX</p>
                   <p className="mt-0.5 text-xs text-[#9DA6B5]">ওয়ার্ড ডকুমেন্ট</p>
                 </div>
                 <div className="rounded-lg border border-[#D4A853]/20 bg-[#0A0D12] p-3">
-                  <p className="text-xl font-bold text-[#EAC779] tabular-nums">উত্তরপত্র</p>
-                  <p className="mt-0.5 text-xs text-[#9DA6B5]">ব্যাখ্যাসহ ঐচ্ছিক</p>
+                  <p className="text-xl font-bold text-[#EAC779] tabular-nums">.PPTX</p>
+                  <p className="mt-0.5 text-xs text-[#9DA6B5]">সম্পাদনাযোগ্য স্লাইড</p>
                 </div>
                 <div className="rounded-lg border border-[#D4A853]/20 bg-[#0A0D12] p-3">
-                  <p className="text-xl font-bold text-[#EAC779] tabular-nums">স্ন্যাপশট</p>
-                  <p className="mt-0.5 text-xs text-[#9DA6B5]">অপরিবর্তনীয় রেকর্ড</p>
+                  <p className="text-xl font-bold text-[#EAC779] tabular-nums">লাইভ র‍্যাংক</p>
+                  <p className="mt-0.5 text-xs text-[#9DA6B5]">লিডারবোর্ড ও প্রোফাইল</p>
                 </div>
               </div>
             </div>
@@ -172,68 +475,34 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* অন্তর্ভুক্ত শ্রেণি ও বিষয়সমূহ */}
-      <section className="border-y border-[#D4A853]/20 bg-[#0A0D12] py-16">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 space-y-10">
-          <SectionDivider
-            title="অন্তর্ভুক্ত শ্রেণি ও বিষয়সমূহ"
-            subtitle="একাডেমিক সম্পাদনা পর্ষদ কর্তৃক বাংলা ও ইংরেজি উভয় মাধ্যমে কেন্দ্রীয়ভাবে সংকলিত।"
-          />
-
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {classes.map((cls) => {
-              const clsSubjects = subjects.filter((s) => s.classId === cls.id);
-              return (
-                <div key={cls.id} className="obsidian-card-interactive rounded-xl p-5">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <h3 className="font-bangla text-xl font-bold gold-text-gradient">{cls.nameBn}</h3>
-                    <span className="text-xs font-mono text-[#D4A853] tabular-nums">
-                      {toBanglaDigits(clsSubjects.length)} বিষয়
-                    </span>
-                  </div>
-                  <ul className="mt-4 space-y-2 border-t border-[#D4A853]/15 pt-3 text-sm text-[#C2C8D3]">
-                    {clsSubjects.map((sub) => (
-                      <li key={sub.id} className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#D4A853]" />
-                        <span>{sub.nameBn}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* যেভাবে কাজ করে — ৬/৪ ক্যাপাবিলিটি গ্রিড */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 space-y-10">
+      {/* যেভাবে কাজ করে */}
+      <section className="border-t border-[#D4A853]/20 mx-auto max-w-6xl px-4 py-16 sm:px-6 space-y-10">
         <SectionDivider
           title="প্রশ্নব্যাংক যেভাবে কাজ করে"
-          subtitle="অ্যাকাউন্ট খোলা থেকে শুরু করে প্রিন্ট-উপযোগী প্রশ্নপত্র তৈরি পর্যন্ত চারটি সুবিন্যস্ত ধাপ।"
+          subtitle="অ্যাকাউন্ট খোলা থেকে শুরু করে প্রশ্নপত্র, স্লাইড ও লাইভ পরীক্ষা পরিচালনা পর্যন্ত সুবিন্যস্ত কর্মপ্রবাহ।"
         />
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
               num: '০১',
-              title: 'শ্রেণি-ভিত্তিক প্ল্যান বাছাই করুন',
+              title: 'প্ল্যান বাছাই ও অ্যাক্সেস',
               desc: 'আপনার পাঠ্যক্রম অনুযায়ী একক শ্রেণি বা একাধিক শ্রেণির বান্ডেল সাবস্ক্রিপশন নির্বাচন করুন।',
             },
             {
               num: '০২',
-              title: 'ম্যানুয়াল পেমেন্ট জমা দিন',
-              desc: 'বিকাশ, নগদ বা ব্যাংক ট্রান্সফারের মাধ্যমে পেমেন্ট করে ট্রানজেকশন নম্বর জমা দিন।',
+              title: 'প্রশ্নপত্র ও স্লাইড তৈরি',
+              desc: 'প্রশ্নব্যাংক থেকে বাছাই করে প্রিন্ট-রেডি প্রশ্নপত্র কিংবা ১০–১০০টি MCQ দিয়ে .PPTX স্লাইড বানান।',
             },
             {
               num: '০৩',
-              title: 'অনুমোদিত প্রশ্ন ব্রাউজ করুন',
-              desc: 'অ্যাডমিন যাচাইয়ের পর বিষয়, অধ্যায়, টপিক, কঠিনতা ও নম্বর অনুযায়ী প্রশ্ন ফিল্টার করুন।',
+              title: 'লাইভ পরীক্ষা পরিচালনা',
+              desc: 'সময়সীমা, নেগেটিভ মার্কিং ও পাবলিক/প্রাইভেট অ্যাক্সেসসহ অনলাইন পরীক্ষা প্রকাশ করুন।',
             },
             {
               num: '০৪',
-              title: 'প্রশ্নপত্র সাজান ও ডাউনলোড করুন',
-              desc: 'প্রশ্ন যুক্ত করে নম্বর ও ক্রম ঠিক করুন, লাইভ প্রিভিউ দেখুন এবং পিডিএফ বা ওয়ার্ড ডাউনলোড করুন।',
+              title: 'ফলাফল ও লিডারবোর্ড',
+              desc: 'স্বয়ংক্রিয় মূল্যায়নের পর উত্তর বিশ্লেষণ, অর্জন ও মেধা তালিকায় নিজের অবস্থান দেখুন।',
             },
           ].map((item) => (
             <div key={item.num} className="obsidian-card rounded-xl p-5 space-y-2.5">
@@ -249,12 +518,12 @@ export function HomePage() {
         {/* ৬-আইকন প্ল্যাটফর্ম সুবিধা স্ট্রিপ */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 pt-2">
           {[
-            { icon: <BookOpen className="h-5 w-5" />, title: 'পছন্দ ও বুকমার্ক', sub: 'দ্রুত পুনর্ব্যবহার' },
-            { icon: <FileSpreadsheet className="h-5 w-5" />, title: '৭ ধরনের ফরম্যাট', sub: 'সৃজনশীল ও গণিত' },
-            { icon: <GraduationCap className="h-5 w-5" />, title: 'দুই মাধ্যম', sub: 'বাংলা ও ইংরেজি' },
-            { icon: <FileText className="h-5 w-5" />, title: 'প্রতিষ্ঠানের লোগো', sub: 'কাস্টম হেডার' },
-            { icon: <Layers className="h-5 w-5" />, title: 'ড্র্যাগ ক্রমবিন্যাস', sub: 'সহজ প্রশ্ন সাজানো' },
-            { icon: <ShieldCheck className="h-5 w-5" />, title: 'রোল নিয়ন্ত্রিত', sub: 'সুরক্ষিত ওয়ার্কস্পেস' },
+            { icon: <BookOpen className="h-5 w-5" />, title: 'কেন্দ্রীয় প্রশ্নব্যাংক', sub: 'এক উৎস থেকে সব' },
+            { icon: <Presentation className="h-5 w-5" />, title: 'অটো স্লাইড মেকার', sub: '.PPTX ও PDF' },
+            { icon: <Radio className="h-5 w-5" />, title: 'লাইভ পরীক্ষা', sub: 'কাউন্টডাউন টাইমার' },
+            { icon: <Trophy className="h-5 w-5" />, title: 'লিডারবোর্ড', sub: 'বিষয়ভিত্তিক র‍্যাংক' },
+            { icon: <FileSpreadsheet className="h-5 w-5" />, title: '৭ ধরনের ফরম্যাট', sub: 'সৃজনশীল ও MCQ' },
+            { icon: <ShieldCheck className="h-5 w-5" />, title: 'প্রাইভেসি কন্ট্রোল', sub: 'সুরক্ষিত প্রোফাইল' },
           ].map((cap) => (
             <div
               key={cap.title}
@@ -270,107 +539,8 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* সাবস্ক্রিপশন প্ল্যান প্রিভিউ */}
-      <section className="border-y border-[#D4A853]/20 bg-[#0A0D12] py-16">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 space-y-10">
-          <SectionDivider
-            title="সাবস্ক্রিপশন প্ল্যানসমূহ (নমুনা মূল্য)"
-            subtitle="সকল প্ল্যানের মূল্য ও মেয়াদ অ্যাডমিন ড্যাশবোর্ড থেকে পরিবর্তনযোগ্য। এখানে নমুনা মূল্য প্রদর্শিত হয়েছে।"
-          />
-
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {plans.map((plan) => {
-              const bn = PLAN_TRANSLATIONS_BN[plan.id];
-              const displayAudience = bn?.audience || 'সাবস্ক্রিপশন প্যাকেজ';
-              const displayDesc = bn?.desc || plan.description;
-              const displayFeatures = bn?.features || plan.features.slice(0, 3);
-
-              return (
-                <div
-                  key={plan.id}
-                  className="obsidian-card-interactive flex flex-col justify-between rounded-xl p-5"
-                >
-                  <div>
-                    <p className="text-xs font-semibold tracking-wide text-[#D4A853]">{displayAudience}</p>
-                    <h3 className="mt-1 font-bangla text-xl font-bold text-[#F5EFE2]">{plan.nameBn}</h3>
-                    <div className="mt-3 flex items-baseline gap-2 tabular-nums">
-                      <span className="font-bangla text-3xl font-bold gold-text-gradient">
-                        ৳{toBanglaDigits(plan.priceBdt.toLocaleString())}
-                      </span>
-                      <span className="text-sm text-[#8C95A4]">/ {toBanglaDigits(plan.durationDays)} দিন</span>
-                    </div>
-                    <p className="mt-3 text-sm text-[#B8C0CE] leading-relaxed">{displayDesc}</p>
-                    <ul className="mt-4 space-y-2 border-t border-[#D4A853]/15 pt-3 text-sm text-[#E5E0D5]">
-                      {displayFeatures.map((feat) => (
-                        <li key={feat} className="flex items-start gap-2">
-                          <Check className="h-4 w-4 text-[#EAC779] shrink-0 mt-0.5" />
-                          <span>{feat}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <Link
-                    to={`/dashboard/payments/new?planId=${plan.id}`}
-                    className="mt-5 block rounded-lg gold-outline-btn px-4 py-2.5 text-center text-sm font-semibold"
-                  >
-                    প্ল্যান নির্বাচন করুন
-                  </Link>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* হাইলাইটেড প্ল্যান কমপ্যারিসন কার্ড (রেফারেন্স বটম শোকেস অনুযায়ী) */}
-          {featuredPlan && (
-            <div className="obsidian-chamfer rounded-xl p-6 lg:p-8">
-              <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12">
-                <div className="lg:col-span-5 space-y-2">
-                  <p className="text-xs font-bold tracking-widest text-[#D4A853]">
-                    সর্বাধিক জনপ্রিয় প্যাকেজ
-                  </p>
-                  <h3 className="font-bangla text-2xl font-bold gold-text-gradient">
-                    {featuredPlan.nameBn}
-                  </h3>
-                  <p className="text-sm text-[#B8C0CE] leading-relaxed">
-                    {featuredBn?.desc || featuredPlan.description}
-                  </p>
-                </div>
-
-                <div className="lg:col-span-4 space-y-2 text-sm text-[#E5E0D5]">
-                  {(featuredBn?.features || featuredPlan.features).slice(0, 4).map((f) => (
-                    <div key={f} className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-[#EAC779] shrink-0" />
-                      <span>{f}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="lg:col-span-3 flex flex-col items-start lg:items-end justify-center gap-3">
-                  <div className="tabular-nums lg:text-right">
-                    <p className="text-3xl font-bold gold-text-gradient">
-                      ৳{toBanglaDigits(featuredPlan.priceBdt.toLocaleString())}
-                    </p>
-                    <p className="text-xs text-[#9DA6B5]">
-                      মেয়াদ {toBanglaDigits(featuredPlan.durationDays)} দিন
-                    </p>
-                  </div>
-                  <Link
-                    to={`/dashboard/payments/new?planId=${featuredPlan.id}`}
-                    className="inline-flex w-full lg:w-auto items-center justify-center gap-2 rounded-lg gold-btn px-6 py-2.5 text-sm font-bold"
-                  >
-                    <span>এখনই শুরু করুন</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
       {/* নোটিশ ও সচরাচর জিজ্ঞাসা */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+      <section className="border-t border-[#D4A853]/20 mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
           <div className="lg:col-span-5">
             <h2 className="font-bangla text-2xl font-bold gold-text-gradient">প্ল্যাটফর্ম নোটিশ</h2>
@@ -423,28 +593,28 @@ export function HomePage() {
       </section>
 
       {/* চূড়ান্ত আহ্বান */}
-      <section className="border-t border-[#D4A853]/25 bg-[radial-gradient(ellipse_at_center,rgba(212,168,83,0.14),transparent_70%)] py-14">
+      <section className="hero-theme-surface border-t border-[#D4A853]/25 py-14">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-4 sm:flex-row sm:items-center sm:px-6">
           <div>
-            <h2 className="font-bangla text-2xl font-bold sm:text-3xl gold-text-gradient">
-              প্রশ্নব্যাংক ওয়ার্কস্পেস ব্যবহার করতে প্রস্তুত?
+            <h2 className="hero-headline font-bangla text-2xl font-bold sm:text-3xl gold-text-gradient">
+              প্রশ্নপত্র, স্লাইড তৈরি ও লাইভ পরীক্ষা শুরু করতে প্রস্তুত?
             </h2>
-            <p className="mt-2 text-base text-[#C2C8D3]">
-              এক ক্লিকে ডেমো শিক্ষার্থী বা অ্যাডমিন অ্যাকাউন্টে লগইন করুন অথবা নতুন শিক্ষার্থী অ্যাকাউন্ট তৈরি করুন।
+            <p className="hero-subheadline mt-2 text-base text-[#C2C8D3]">
+              এক ক্লিকে সরাসরি একাডেমিক ও অ্যাডমিশন প্রশ্নপত্র, স্লাইড তৈরি অথবা লাইভ পরীক্ষা ব্যবহার শুরু করুন।
             </p>
           </div>
           <div className="flex flex-wrap gap-3 shrink-0">
             <Link
-              to="/login"
+              to="/slides"
               className="rounded-lg gold-btn px-6 py-3 text-base font-bold"
             >
-              ডেমো লগইন করুন
+              স্লাইড তৈরি করুন
             </Link>
             <Link
-              to="/pricing"
+              to="/exams"
               className="rounded-lg gold-outline-btn px-6 py-3 text-base font-semibold"
             >
-              প্ল্যানসমূহ দেখুন
+              লাইভ পরীক্ষা দেখুন
             </Link>
           </div>
         </div>

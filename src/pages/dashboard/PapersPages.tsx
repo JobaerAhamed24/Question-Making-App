@@ -30,6 +30,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { formatBnDate, getDifficultyLabelBn, toBanglaDigits } from '../../lib/bn';
 import { generatePaperDocxBlob, triggerBlobDownload } from '../../lib/docxExport';
 import { calculatePaperTotalMarks, canUserAddQuestionToPaper } from '../../lib/rules';
+import { platformService } from '../../services/platformService';
 import { questionBankService } from '../../services/questionBankService';
 import type { Question, QuestionPaper, QuestionPaperItem } from '../../types/domain';
 
@@ -39,11 +40,19 @@ export function MyPapersPage() {
   const [deleteTarget, setDeleteTarget] = useState<QuestionPaper | null>(null);
 
   const catalogue = questionBankService.getAcademicCatalogue();
-  const papers = useMemo(
-    () => (user ? questionBankService.getUserPapers(user.id) : []),
+  const papers = useMemo(() => {
+    if (!user) return [];
+    const legacy = questionBankService.getUserPapers(user.id);
+    const studio = platformService.listStudioPapers(user.id);
+    const map = new Map<string, QuestionPaper>();
+    [...studio, ...legacy].forEach((p) => {
+      if (!map.has(p.id)) map.set(p.id, p);
+    });
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [user, revision]
-  );
+  }, [user, revision]);
 
   if (!user) return null;
 
@@ -119,18 +128,20 @@ export function MyPapersPage() {
 
               <div className="flex flex-wrap items-center gap-2 border-t border-[#D4A853]/15 pt-3">
                 <Link
-                  to={`/dashboard/papers/${paper.id}/preview`}
+                  to={`/paper-editor/${paper.id}`}
                   className="inline-flex items-center gap-1.5 rounded-lg gold-btn px-3 py-1.5 text-sm font-bold"
                 >
                   <Eye className="h-3.5 w-3.5" />
-                  <span>প্রিভিউ ও এক্সপোর্ট</span>
+                  <span>ডকুমেন্ট এডিটর ও OMR</span>
                 </Link>
-                <Link
-                  to={`/dashboard/papers/${paper.id}`}
-                  className="inline-flex items-center gap-1.5 rounded-lg gold-outline-btn px-3 py-1.5 text-sm font-medium"
-                >
-                  <span>সম্পাদনা</span>
-                </Link>
+                {!paper.id.startsWith('paper-studio') && (
+                  <Link
+                    to={`/dashboard/papers/${paper.id}/preview`}
+                    className="inline-flex items-center gap-1.5 rounded-lg gold-outline-btn px-3 py-1.5 text-sm font-medium"
+                  >
+                    <span>দ্রুত প্রিভিউ</span>
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={() => setDeleteTarget(paper)}
@@ -151,7 +162,11 @@ export function MyPapersPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => {
           if (!deleteTarget) return;
-          questionBankService.deletePaper(user, deleteTarget.id);
+          if (deleteTarget.id.startsWith('paper-studio')) {
+            platformService.deleteStudioPaper(deleteTarget.id);
+          } else {
+            questionBankService.deletePaper(user, deleteTarget.id);
+          }
           bumpRevision();
           pushToast({ title: 'প্রশ্নপত্র মুছে ফেলা হয়েছে', variant: 'info' });
         }}

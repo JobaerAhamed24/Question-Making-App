@@ -1,4 +1,5 @@
-import { supabase } from '../lib/supabaseClient';
+import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
+import { mockDb } from '../lib/mockDb';
 
 async function currentUserId(): Promise<string> {
   const { data, error } = await supabase.auth.getUser();
@@ -8,6 +9,19 @@ async function currentUserId(): Promise<string> {
 }
 
 async function toggle(table: 'favorites' | 'saved_questions', questionId: string): Promise<string[]> {
+  if (!isSupabaseConfigured) {
+    const user = mockDb.getCurrentUser();
+    if (!user) throw new Error('লগইন করুন।');
+    const state = mockDb.getState();
+    const map = table === 'favorites' ? state.favoritesByUserId : state.savedByUserId;
+    const list = map[user.id] ?? [];
+    const next = list.includes(questionId)
+      ? list.filter((id) => id !== questionId)
+      : [questionId, ...list];
+    map[user.id] = next;
+    mockDb.save();
+    return [...next];
+  }
   const userId = await currentUserId();
   const { data: existing, error: selectError } = await supabase
     .from(table)
@@ -30,6 +44,15 @@ async function toggle(table: 'favorites' | 'saved_questions', questionId: string
 
 export const favoriteService = {
   async getCollections(): Promise<{ favoriteIds: string[]; savedIds: string[] }> {
+    if (!isSupabaseConfigured) {
+      const user = mockDb.getCurrentUser();
+      if (!user) return { favoriteIds: [], savedIds: [] };
+      const state = mockDb.getState();
+      return {
+        favoriteIds: [...(state.favoritesByUserId[user.id] ?? [])],
+        savedIds: [...(state.savedByUserId[user.id] ?? [])],
+      };
+    }
     const userId = await currentUserId();
     const [favorites, saved] = await Promise.all([
       supabase.from('favorites').select('question_id').eq('user_id', userId),

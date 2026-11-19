@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { questionBankService } from '../services/questionBankService';
 import type { UserProfile } from '../types/domain';
-import { supabase } from '../lib/supabaseClient';
+import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
 
 interface AuthContextValue {
   user: UserProfile | null;
@@ -9,6 +9,7 @@ interface AuthContextValue {
   revision: number;
   bumpRevision: () => void;
   login: (email: string, password: string) => Promise<UserProfile>;
+  enterQuickAdmin: () => Promise<UserProfile>;
   register: (input: {
     fullName: string;
     email: string;
@@ -22,6 +23,10 @@ interface AuthContextValue {
     fullName: string;
     phone: string;
     institution?: string;
+    classId?: string;
+    avatarUrl?: string;
+    bio?: string;
+    privacySettings?: UserProfile['privacySettings'];
     preferredLanguage: 'en' | 'bn';
   }) => Promise<UserProfile>;
 }
@@ -57,14 +62,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }, 0);
     };
-    console.log('[v0] Registering Supabase auth listener');
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY') {
-        refreshSession();
-      }
-    });
+    const authListener = isSupabaseConfigured
+      ? supabase.auth.onAuthStateChange((event) => {
+          if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY') {
+            refreshSession();
+          }
+        }).data
+      : null;
 
-    console.log('[v0] Starting initial Supabase hydration');
+    console.log('[v0] Starting initial hydration');
     questionBankService
       .hydrateFromServer()
       .then((sessionUser) => {
@@ -73,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRevision((r) => r + 1);
       })
       .catch((err) => {
-        console.error('Supabase bootstrap failed:', err);
+        console.error('Bootstrap hydration failed:', err);
       })
       .finally(() => {
         if (active) setIsHydrating(false);
@@ -81,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       active = false;
-      authListener.subscription.unsubscribe();
+      authListener?.subscription.unsubscribe();
       questionBankService.setSyncListener(null);
     };
   }, []);
@@ -91,6 +97,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(loggedIn);
     setRevision((r) => r + 1);
     return loggedIn;
+  }, []);
+
+  const enterQuickAdmin = useCallback(async () => {
+    const adminUser = await questionBankService.enterQuickAdmin();
+    setUser(adminUser);
+    setRevision((r) => r + 1);
+    return adminUser;
   }, []);
 
   const register = useCallback(
@@ -121,6 +134,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fullName: string;
       phone: string;
       institution?: string;
+      classId?: string;
+      avatarUrl?: string;
+      bio?: string;
+      privacySettings?: UserProfile['privacySettings'];
       preferredLanguage: 'en' | 'bn';
     }) => {
       if (!user) throw new Error('Not authenticated.');
@@ -140,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         revision,
         bumpRevision,
         login,
+        enterQuickAdmin,
         register,
         logout,
         updateProfile,

@@ -22,14 +22,28 @@ export async function generatePaperDocxBlob(
   includeAnswerKey: boolean
 ): Promise<Blob> {
   const totalMarks = calculatePaperTotalMarks(paper.items);
+  const resolvedClass = paper.classLabel || className;
+  const resolvedSubject = paper.subjectLabel || subjectName;
 
-  const children: Array<Paragraph | Table> = [
+  const children: Array<Paragraph | Table> = [];
+
+  if (paper.headerText) {
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 60 },
+        children: [new TextRun({ text: paper.headerText, italics: true, size: 18 })],
+      })
+    );
+  }
+
+  children.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
       heading: HeadingLevel.HEADING_1,
       children: [
         new TextRun({
-          text: paper.schoolName,
+          text: paper.schoolName || 'শিক্ষা প্রতিষ্ঠান',
           bold: true,
           size: 32,
         }),
@@ -51,14 +65,17 @@ export async function generatePaperDocxBlob(
       spacing: { after: 160 },
       children: [
         new TextRun({
-          text: `শ্রেণি: ${className}   |   বিষয়: ${subjectName}   |   সময়: ${toBanglaDigits(paper.durationMinutes)} মিনিট   |   পূর্ণমান: ${toBanglaDigits(totalMarks)}`,
+          text: `${paper.domain === 'admission' ? 'বিভাগ' : 'শ্রেণি'}: ${resolvedClass}   |   বিষয়: ${resolvedSubject}   |   সময়: ${toBanglaDigits(paper.durationMinutes)} মিনিট   |   পূর্ণমান: ${toBanglaDigits(totalMarks)}`,
           size: 20,
         }),
       ],
-    }),
-  ];
+    })
+  );
 
   if (paper.includeStudentFields) {
+    const rollLine = paper.examDate
+      ? `রোল নং: ____________   তারিখ: ${toBanglaDigits(paper.examDate)}`
+      : 'রোল নং: __________________   শাখা/সেট: ________';
     children.push(
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
@@ -87,7 +104,7 @@ export async function generatePaperDocxBlob(
                 },
                 children: [
                   new Paragraph({
-                    children: [new TextRun({ text: `রোল নং: ____________   তারিখ: ${toBanglaDigits(paper.examDate)}`, size: 20 })],
+                    children: [new TextRun({ text: rollLine, size: 20 })],
                   }),
                 ],
               }),
@@ -98,19 +115,21 @@ export async function generatePaperDocxBlob(
     );
   }
 
-  children.push(
-    new Paragraph({
-      spacing: { before: 180, after: 200 },
-      children: [
-        new TextRun({ text: 'সাধারণ নির্দেশনা: ', bold: true, size: 20 }),
-        new TextRun({ text: paper.instructions, italics: true, size: 20 }),
-      ],
-    })
-  );
+  if (paper.instructions) {
+    children.push(
+      new Paragraph({
+        spacing: { before: 180, after: 200 },
+        children: [
+          new TextRun({ text: 'সাধারণ নির্দেশনা: ', bold: true, size: 20 }),
+          new TextRun({ text: paper.instructions, italics: true, size: 20 }),
+        ],
+      })
+    );
+  }
 
   paper.items.forEach((item, index) => {
     const q = item.snapshot;
-    const numBn = toBanglaDigits(index + 1);
+    const numBn = item.customNumber || toBanglaDigits(index + 1);
     const marksBn = toBanglaDigits(item.customMarks);
     if (q.stimulus) {
       children.push(

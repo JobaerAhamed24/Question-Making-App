@@ -15,8 +15,11 @@ import type {
   Topic,
   UserRole,
 } from '../types/domain';
+import { findDuplicateSubject, inferEducationLevel } from '../data/curriculumData';
 import type { AppDatabaseState } from '../data/seedData';
-import { supabase } from '../lib/supabaseClient';
+import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
+import { mockDb } from '../lib/mockDb';
+import { calculateNewSubscriptionWindow } from '../lib/rules';
 import {
   mapChapter,
   mapClass,
@@ -39,6 +42,25 @@ import {
 const id = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 
 async function saveQuestion(input: Omit<Question, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): Promise<Question> {
+  if (!isSupabaseConfigured) {
+    const state = mockDb.getState();
+    const admin = mockDb.getCurrentUser();
+    const now = new Date().toISOString();
+    const questionId = input.id || mockDb.uid('q');
+    const idx = state.questions.findIndex((q) => q.id === questionId);
+    const createdAt = idx !== -1 ? state.questions[idx].createdAt : now;
+    const saved: Question = {
+      ...structuredClone(input),
+      id: questionId,
+      createdAt,
+      updatedAt: now,
+    };
+    if (idx !== -1) state.questions[idx] = saved;
+    else state.questions.unshift(saved);
+    mockDb.save();
+    mockDb.logActivity(admin, idx !== -1 ? 'question.update' : 'question.create', 'question', saved.id, saved.prompt.slice(0, 60));
+    return structuredClone(saved);
+  }
   const { data: type, error: typeError } = await supabase.from('question_types').select('id').eq('code', input.questionTypeCode).single();
   if (typeError) throw typeError;
   const questionId = input.id || id('q');
@@ -111,6 +133,10 @@ async function saveQuestion(input: Omit<Question, 'id' | 'createdAt' | 'updatedA
 
 export const adminService = {
   async getSnapshot(): Promise<Omit<AppDatabaseState, 'passwordsByUserId'>> {
+    if (!isSupabaseConfigured) {
+      const { passwordsByUserId: _passwords, ...rest } = mockDb.getState();
+      return structuredClone(rest);
+    }
     const [profiles, roles, classes, groups, subjects, chapters, topics, questionTypes, questions, plans, paymentMethods, payments, subscriptions, favorites, saved, papers, exports, notices, faqs, contactMessages, siteSettings, activityLogs] = await Promise.all([
       supabase.from('profiles').select('*').order('created_at', { ascending: false }),
       supabase.from('user_roles').select('*'),
@@ -174,37 +200,136 @@ export const adminService = {
         officeAddress: '', renewalRuleNotice: '', demoDisclaimer: '',
       },
       activityLogs: toLogs as ActivityLog[],
+      exams: [],
+      examAttempts: [],
+      slideDecks: [],
     };
   },
 
   async addClass(input: Omit<AcademicClass, 'id'>): Promise<AcademicClass> {
+    const educationLevel = input.educationLevel ?? inferEducationLevel(input.levelOrder);
+    if (!isSupabaseConfigured) {
+      const item: AcademicClass = { ...structuredClone(input), educationLevel, id: mockDb.uid('cls') };
+      mockDb.getState().classes.push(item);
+      mockDb.save();
+      return structuredClone(item);
+    }
     const payload = { id: id('cls'), name: input.name, name_bn: input.nameBn, slug: input.slug, level_order: input.levelOrder, has_groups: input.hasGroups, is_active: input.isActive };
     const { data, error } = await supabase.from('classes').insert(payload).select('*').single();
     if (error) throw error;
     return mapClass(data);
   },
+  async toggleClassStatus(classId: string, isActive: boolean): Promise<AcademicClass> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const target = state.classes.find((c) => c.id === classId);
+      if (!target) throw new Error('শ্রেণি পাওয়া যায়নি।');
+      target.isActive = isActive;
+      mockDb.save();
+      return structuredClone(target);
+    }
+    const { data, error } = await supabase.from('classes').update({ is_active: isActive }).eq('id', classId).select('*').single();
+    if (error) throw error;
+    return mapClass(data);
+  },
   async addGroup(input: Omit<AcademicGroup, 'id'>): Promise<AcademicGroup> {
+    if (!isSupabaseConfigured) {
+      const item: AcademicGroup = { ...structuredClone(input), id: mockDb.uid('grp') };
+      mockDb.getState().groups.push(item);
+      mockDb.save();
+      return structuredClone(item);
+    }
     const { data, error } = await supabase.from('groups').insert({ id: id('grp'), class_id: input.classId, name: input.name, name_bn: input.nameBn, is_active: input.isActive }).select('*').single();
     if (error) throw error;
     return mapGroup(data);
   },
   async addSubject(input: Omit<Subject, 'id'>): Promise<Subject> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const dup = findDuplicateSubject(state.subjects, input);
+      if (dup) {
+        throw new Error(`একই শ্রেণি ও বিভাগে "${dup.nameBn}" (${dup.code}) বিষয়টি ইতিমধ্যে রয়েছে।`);
+      }
+      const item: Subject = { ...structuredClone(input), id: mockDb.uid('sub') };
+      state.subjects.push(item);
+      mockDb.save();
+      return structuredClone(item);
+    }
     const { data, error } = await supabase.from('subjects').insert({ id: id('sub'), class_id: input.classId, group_id: input.groupId || null, name: input.name, name_bn: input.nameBn, code: input.code, is_active: input.isActive }).select('*').single();
     if (error) throw error;
     return mapSubject(data);
   },
+  async updateSubject(subject: Subject): Promise<Subject> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const dup = findDuplicateSubject(state.subjects, subject);
+      if (dup) {
+        throw new Error(`একই শ্রেণি ও বিভাগে "${dup.nameBn}" (${dup.code}) বিষয়টি ইতিমধ্যে রয়েছে।`);
+      }
+      const idx = state.subjects.findIndex((s) => s.id === subject.id);
+      if (idx === -1) throw new Error('বিষয়টি পাওয়া যায়নি।');
+      const updated = structuredClone(subject);
+      state.subjects[idx] = updated;
+      mockDb.save();
+      return structuredClone(updated);
+    }
+    const { data, error } = await supabase
+      .from('subjects')
+      .update({
+        class_id: subject.classId,
+        group_id: subject.groupId || null,
+        name: subject.name,
+        name_bn: subject.nameBn,
+        code: subject.code,
+        is_active: subject.isActive,
+      })
+      .eq('id', subject.id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return mapSubject(data);
+  },
+  async deleteSubject(subjectId: string): Promise<{ ok: boolean }> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      state.subjects = state.subjects.filter((s) => s.id !== subjectId);
+      mockDb.save();
+      return { ok: true };
+    }
+    const { error } = await supabase.from('subjects').delete().eq('id', subjectId);
+    if (error) throw error;
+    return { ok: true };
+  },
   async addChapter(input: Omit<Chapter, 'id'>): Promise<Chapter> {
+    if (!isSupabaseConfigured) {
+      const item: Chapter = { ...structuredClone(input), id: mockDb.uid('ch') };
+      mockDb.getState().chapters.push(item);
+      mockDb.save();
+      return structuredClone(item);
+    }
     const { data, error } = await supabase.from('chapters').insert({ id: id('ch'), subject_id: input.subjectId, chapter_number: input.chapterNumber, name: input.name, name_bn: input.nameBn, is_active: input.isActive }).select('*').single();
     if (error) throw error;
     return mapChapter(data);
   },
   async addTopic(input: Omit<Topic, 'id'>): Promise<Topic> {
+    if (!isSupabaseConfigured) {
+      const item: Topic = { ...structuredClone(input), id: mockDb.uid('top') };
+      mockDb.getState().topics.push(item);
+      mockDb.save();
+      return structuredClone(item);
+    }
     const { data, error } = await supabase.from('topics').insert({ id: id('topic'), chapter_id: input.chapterId, name: input.name, name_bn: input.nameBn, is_active: input.isActive }).select('*').single();
     if (error) throw error;
     return mapTopic(data);
   },
   saveQuestion,
   async deleteQuestion(questionId: string): Promise<{ ok: boolean }> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      state.questions = state.questions.filter((q) => q.id !== questionId);
+      mockDb.save();
+      return { ok: true };
+    }
     const { error } = await supabase.from('questions').delete().eq('id', questionId);
     if (error) throw error;
     return { ok: true };
@@ -215,6 +340,15 @@ export const adminService = {
     return { importedCount };
   },
   async savePlan(input: Omit<Plan, 'id'> & { id?: string }): Promise<Plan> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const plan: Plan = { ...structuredClone(input), id: input.id || mockDb.uid('plan') };
+      const idx = state.plans.findIndex((p) => p.id === plan.id);
+      if (idx !== -1) state.plans[idx] = plan;
+      else state.plans.push(plan);
+      mockDb.save();
+      return structuredClone(plan);
+    }
     const planId = input.id || id('plan');
     const { error } = await supabase.from('plans').upsert({
       id: planId, name: input.name, name_bn: input.nameBn, audience_label: input.audienceLabel,
@@ -237,6 +371,15 @@ export const adminService = {
     return { ...input, id: planId };
   },
   async savePaymentMethod(input: Omit<PaymentMethod, 'id'> & { id?: string }): Promise<PaymentMethod> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const pm: PaymentMethod = { ...structuredClone(input), id: input.id || mockDb.uid('pm') };
+      const idx = state.paymentMethods.findIndex((m) => m.id === pm.id);
+      if (idx !== -1) state.paymentMethods[idx] = pm;
+      else state.paymentMethods.push(pm);
+      mockDb.save();
+      return structuredClone(pm);
+    }
     const { data, error } = await supabase.from('payment_methods').upsert({
       id: input.id || id('pm'), name: input.name, account_number: input.accountNumber,
       account_type: input.accountType, instructions: input.instructions, is_active: input.isActive,
@@ -245,6 +388,60 @@ export const adminService = {
     return mapPaymentMethod(data);
   },
   async reviewPayment(paymentId: string, decision: 'approved' | 'rejected', reviewNote: string): Promise<{ payment: Payment; subscription?: Subscription }> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const admin = mockDb.getCurrentUser();
+      const idx = state.payments.findIndex((p) => p.id === paymentId);
+      if (idx === -1) throw new Error('পেমেন্ট তথ্য পাওয়া যায়নি।');
+      const existing = state.payments[idx];
+      if (existing.status !== 'pending') throw new Error('এই পেমেন্টটি ইতিমধ্যেই যাচাই করা হয়েছে।');
+      const now = new Date();
+      const updatedPayment: Payment = {
+        ...existing,
+        status: decision,
+        reviewedByAdminId: admin?.id,
+        reviewedAt: now.toISOString(),
+        reviewNote:
+          reviewNote.trim() ||
+          (decision === 'approved' ? 'যাচাইকৃত ও সক্রিয় করা হয়েছে।' : 'পেমেন্ট যাচাই ব্যর্থ হয়েছে।'),
+      };
+      state.payments[idx] = updatedPayment;
+      let createdSub: Subscription | undefined;
+      if (decision === 'approved') {
+        const plan = state.plans.find((p) => p.id === existing.planId);
+        if (plan) {
+          for (const sub of state.subscriptions) {
+            if (
+              sub.userId === existing.userId &&
+              sub.status === 'active' &&
+              sub.grantedClassIds.some((cid) => plan.includedClassIds.includes(cid))
+            ) {
+              sub.status = 'expired';
+            }
+          }
+          const win = calculateNewSubscriptionWindow(plan.durationDays, now);
+          const newSub: Subscription = {
+            id: mockDb.uid('sub'),
+            userId: existing.userId,
+            planId: plan.id,
+            planNameSnapshot: plan.nameBn || plan.name,
+            priceSnapshotBdt: plan.priceBdt,
+            durationDaysSnapshot: plan.durationDays,
+            grantedClassIds: [...plan.includedClassIds],
+            status: 'active',
+            startsAt: win.startsAt,
+            expiresAt: win.expiresAt,
+            activatedByAdminId: admin?.id,
+            createdAt: now.toISOString(),
+          };
+          createdSub = newSub;
+          state.subscriptions.unshift(newSub);
+        }
+      }
+      mockDb.save();
+      mockDb.logActivity(admin, `payment.${decision}`, 'payment', paymentId, `${updatedPayment.planNameSnapshot} (${updatedPayment.transactionRef})`);
+      return { payment: structuredClone(updatedPayment), subscription: createdSub ? structuredClone(createdSub) : undefined };
+    }
     const { data, error } = await supabase.functions.invoke('review-payment', { body: { paymentId, decision, reviewNote } });
     if (error) throw error;
     const { data: payment, error: paymentError } = await supabase.from('payments').select('*, payment_receipts(file_name,storage_path,mime_type)').eq('id', paymentId).single();
@@ -252,21 +449,69 @@ export const adminService = {
     return { payment: mapPayment(payment), subscription: data?.result?.subscription ? data.result.subscription as Subscription : undefined };
   },
   async manualActivateSubscription(userId: string, planId: string): Promise<Subscription> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const admin = mockDb.getCurrentUser();
+      const plan = state.plans.find((p) => p.id === planId);
+      if (!plan) throw new Error('প্ল্যান পাওয়া যায়নি।');
+      const now = new Date();
+      const win = calculateNewSubscriptionWindow(plan.durationDays, now);
+      const sub: Subscription = {
+        id: mockDb.uid('sub'),
+        userId,
+        planId: plan.id,
+        planNameSnapshot: `${plan.nameBn || plan.name} (অ্যাডমিন প্রদত্ত)`,
+        priceSnapshotBdt: plan.priceBdt,
+        durationDaysSnapshot: plan.durationDays,
+        grantedClassIds: [...plan.includedClassIds],
+        status: 'active',
+        startsAt: win.startsAt,
+        expiresAt: win.expiresAt,
+        activatedByAdminId: admin?.id,
+        createdAt: now.toISOString(),
+      };
+      state.subscriptions.unshift(sub);
+      mockDb.save();
+      mockDb.logActivity(admin, 'subscription.manual_activate', 'subscription', sub.id, `${userId} -> ${plan.name}`);
+      return structuredClone(sub);
+    }
     const { data, error } = await supabase.rpc('admin_activate_subscription', { p_user_id: userId, p_plan_id: planId });
     if (error) throw error;
     return mapSubscription(data);
   },
   async updateSubscriptionStatus(subscriptionId: string, status: Subscription['status']): Promise<{ ok: boolean }> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const target = state.subscriptions.find((s) => s.id === subscriptionId);
+      if (target) target.status = status;
+      mockDb.save();
+      return { ok: true };
+    }
     const { error } = await supabase.from('subscriptions').update({ status }).eq('id', subscriptionId);
     if (error) throw error;
     return { ok: true };
   },
   async updateUserStatus(userId: string, status: 'active' | 'suspended'): Promise<{ ok: boolean }> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const target = state.users.find((u) => u.id === userId);
+      if (target) target.status = status;
+      mockDb.save();
+      return { ok: true };
+    }
     const { error } = await supabase.from('profiles').update({ status }).eq('id', userId);
     if (error) throw error;
     return { ok: true };
   },
   async updateUserRole(userId: string, role: UserRole): Promise<{ ok: boolean }> {
+    if (!isSupabaseConfigured) {
+      const current = mockDb.getCurrentUser();
+      if (!current || current.id === userId) throw new Error('নিজের অ্যাডমিন ভূমিকা পরিবর্তন করা যাবে না।');
+      const target = mockDb.getState().users.find((u) => u.id === userId);
+      if (target) target.role = role;
+      mockDb.save();
+      return { ok: true };
+    }
     const { data: actor, error: authError } = await supabase.auth.getUser();
     if (authError) throw authError;
     if (!actor.user || actor.user.id === userId) throw new Error('নিজের অ্যাডমিন ভূমিকা পরিবর্তন করা যাবে না।');
@@ -275,6 +520,11 @@ export const adminService = {
     return { ok: true };
   },
   async updateSiteSettings(settings: SiteSettings): Promise<SiteSettings> {
+    if (!isSupabaseConfigured) {
+      mockDb.getState().siteSettings = structuredClone(settings);
+      mockDb.save();
+      return structuredClone(settings);
+    }
     const { data, error } = await supabase.from('site_settings').upsert({
       id: 1, brand_name: settings.brandName, hero_headline: settings.heroHeadline,
       hero_subheadline: settings.heroSubheadline, support_email: settings.supportEmail,
@@ -285,26 +535,71 @@ export const adminService = {
     return mapSiteSettings(data);
   },
   async saveNotice(input: Omit<Notice, 'id' | 'createdAt'> & { id?: string }): Promise<Notice> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const idx = input.id ? state.notices.findIndex((n) => n.id === input.id) : -1;
+      const notice: Notice = {
+        ...structuredClone(input),
+        id: input.id || mockDb.uid('notice'),
+        createdAt: idx !== -1 ? state.notices[idx].createdAt : new Date().toISOString(),
+      };
+      if (idx !== -1) state.notices[idx] = notice;
+      else state.notices.unshift(notice);
+      mockDb.save();
+      return structuredClone(notice);
+    }
     const { data, error } = await supabase.from('notices').upsert({ id: input.id || id('notice'), title: input.title, body: input.body, is_published: input.isPublished }).select('*').single();
     if (error) throw error;
     return mapNotice(data);
   },
   async saveFaq(input: Omit<FaqItem, 'id'> & { id?: string }): Promise<FaqItem> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      const faq: FaqItem = { ...structuredClone(input), id: input.id || mockDb.uid('faq') };
+      const idx = state.faqs.findIndex((f) => f.id === faq.id);
+      if (idx !== -1) state.faqs[idx] = faq;
+      else state.faqs.push(faq);
+      mockDb.save();
+      return structuredClone(faq);
+    }
     const { data, error } = await supabase.from('faqs').upsert({ id: input.id || id('faq'), question: input.question, answer: input.answer, category: input.category, display_order: input.displayOrder, is_published: input.isPublished }).select('*').single();
     if (error) throw error;
     return mapFaq(data);
   },
   async resolveContactMessage(messageId: string): Promise<{ ok: boolean }> {
+    if (!isSupabaseConfigured) {
+      const target = mockDb.getState().contactMessages.find((m) => m.id === messageId);
+      if (target) target.status = 'resolved';
+      mockDb.save();
+      return { ok: true };
+    }
     const { error } = await supabase.from('contact_messages').update({ status: 'resolved' }).eq('id', messageId);
     if (error) throw error;
     return { ok: true };
   },
   async getActivityLogs(): Promise<{ logs: ActivityLog[] }> {
+    if (!isSupabaseConfigured) {
+      return { logs: structuredClone(mockDb.getState().activityLogs) };
+    }
     const { data, error } = await supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(500);
     if (error) throw error;
     return { logs: (data ?? []).map((row) => ({ id: row.id, actorUserId: row.actor_user_id ?? '', actorName: row.actor_name, actorRole: row.actor_role === 'admin' ? 'admin' as const : 'student' as const, action: row.action, targetType: row.target_type, targetId: row.target_id, details: row.details, createdAt: row.created_at })) };
   },
   async getReports(): Promise<{ totalUsers: number; totalQuestions: number; publishedQuestions: number; totalPapers: number; totalExports: number; pendingPayments: number; approvedRevenueBdt: number }> {
+    if (!isSupabaseConfigured) {
+      const state = mockDb.getState();
+      return {
+        totalUsers: state.users.length,
+        totalQuestions: state.questions.length,
+        publishedQuestions: state.questions.filter((q) => q.status === 'published').length,
+        totalPapers: state.papers.length,
+        totalExports: state.exports.length,
+        pendingPayments: state.payments.filter((p) => p.status === 'pending').length,
+        approvedRevenueBdt: state.payments
+          .filter((p) => p.status === 'approved')
+          .reduce((total, row) => total + Number(row.expectedAmountBdt), 0),
+      };
+    }
     const [users, questions, published, papers, exports, pending, approved] = await Promise.all([
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
       supabase.from('questions').select('id', { count: 'exact', head: true }),

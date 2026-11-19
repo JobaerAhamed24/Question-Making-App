@@ -1,4 +1,5 @@
-import { supabase } from '../lib/supabaseClient';
+import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
+import { mockDb } from '../lib/mockDb';
 
 export type StorageBucketName =
   | 'question-images'
@@ -34,6 +35,18 @@ export const storageService = {
     object: { id: string; bucket: string; fileName: string; mimeType: string; sizeBytes: number };
     signedUrl: string;
   }> {
+    if (!isSupabaseConfigured) {
+      const user = mockDb.getCurrentUser();
+      if (!user) throw new Error('ফাইল আপলোড করতে লগইন করুন।');
+      const { blob, mimeType } = decodeDataUrl(params.dataUrl);
+      const safeName = params.fileName.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 100) || 'upload';
+      const folder = params.bucket === 'question-images' ? params.classId || 'general' : user.id;
+      const path = `${folder}/${mockDb.uid('file')}-${safeName}`;
+      return {
+        object: { id: `${params.bucket}:${path}`, bucket: params.bucket, fileName: safeName, mimeType, sizeBytes: blob.size },
+        signedUrl: params.dataUrl,
+      };
+    }
     const { data: auth, error: authError } = await supabase.auth.getUser();
     if (authError) throw authError;
     if (!auth.user) throw new Error('ফাইল আপলোড করতে লগইন করুন।');
@@ -54,6 +67,9 @@ export const storageService = {
   },
 
   async getSignedUrl(objectId: string): Promise<{ signedUrl: string; expiresInSeconds: number }> {
+    if (!isSupabaseConfigured) {
+      return { signedUrl: '', expiresInSeconds: 600 };
+    }
     const { bucket, path } = parseObjectId(objectId);
     const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 10 * 60);
     if (error) throw error;

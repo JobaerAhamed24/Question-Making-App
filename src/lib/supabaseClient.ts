@@ -6,28 +6,53 @@ const env = import.meta.env as ImportMetaEnv & {
   NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
 };
 
-export const SUPABASE_URL = env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || '';
-export const SUPABASE_PUBLISHABLE_KEY =
+const FALLBACK_SUPABASE_URL = 'http://127.0.0.1:54321';
+const FALLBACK_SUPABASE_KEY = 'missing-publishable-key';
+
+function parseValidHttpUrl(raw?: string): string {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) return '';
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString().replace(/\/$/, '');
+    }
+    return '';
+  } catch {
+    return '';
+  }
+}
+
+const rawSupabaseUrl = env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || '';
+export const SUPABASE_URL = parseValidHttpUrl(rawSupabaseUrl);
+export const SUPABASE_PUBLISHABLE_KEY = (
   env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   env.VITE_SUPABASE_ANON_KEY ||
   env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  '';
+  ''
+).trim();
 
 export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
 
 if (!isSupabaseConfigured) {
-  console.error('[v0] Supabase is not configured; set the project URL and publishable key.');
+  if (rawSupabaseUrl.trim() && !SUPABASE_URL) {
+    console.warn(
+      '[Supabase] Configured URL is not a valid HTTP/HTTPS URL; falling back to local seeded data store.'
+    );
+  } else {
+    console.info('[Supabase] Not configured; using local seeded data store.');
+  }
 }
 
 export const supabase: SupabaseClient = createClient(
-  SUPABASE_URL || 'http://127.0.0.1:54321',
-  SUPABASE_PUBLISHABLE_KEY || 'missing-publishable-key',
+  SUPABASE_URL || FALLBACK_SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY || FALLBACK_SUPABASE_KEY,
   {
     auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
+      persistSession: isSupabaseConfigured,
+      autoRefreshToken: isSupabaseConfigured,
+      detectSessionInUrl: isSupabaseConfigured,
     },
     realtime: {
       params: {

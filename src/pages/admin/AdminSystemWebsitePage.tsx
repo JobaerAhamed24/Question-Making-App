@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Check, Moon, Palette, RotateCcw, Sparkles, Sun, Type } from 'lucide-react';
 import {
   Button,
   Card,
@@ -10,6 +11,12 @@ import {
 } from '../../components/ui/Primitives';
 import { GEOMETRY_TRIANGLE_SVG, PHYSICS_CIRCUIT_SVG } from '../../data/seedData';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  FONT_SIZE_PRESETS,
+  SITE_FONT_OPTIONS,
+  THEME_PRESETS,
+  useTheme,
+} from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
 import { formatBnDate, formatBnDateTime, getRoleLabelBn, toBanglaDigits } from '../../lib/bn';
 import { isSubscriptionCurrentlyActive } from '../../lib/rules';
@@ -382,6 +389,19 @@ export function AdminWebsitePage() {
 
 export function AdminLogsSettingsPage({ mode }: { mode: 'logs' | 'settings' }) {
   const { user, revision } = useAuth();
+  const { pushToast } = useToast();
+  const {
+    theme,
+    themePreset,
+    fontFamilyId,
+    fontSizeScale,
+    setTheme,
+    setThemePreset,
+    setFontFamilyId,
+    setFontSizeScale,
+    resetAppearance,
+  } = useTheme();
+  const [fontFilter, setFontFilter] = useState<'all' | 'bangla' | 'global'>('all');
 
   const state = useMemo(
     () => (user?.role === 'admin' ? questionBankService.getAdminDashboardSnapshot(user) : null),
@@ -392,19 +412,315 @@ export function AdminLogsSettingsPage({ mode }: { mode: 'logs' | 'settings' }) {
   if (!user || user.role !== 'admin' || !state) return null;
 
   if (mode === 'settings') {
+    const activeFont = SITE_FONT_OPTIONS.find((f) => f.id === fontFamilyId) || SITE_FONT_OPTIONS[0];
+    const activePreset = THEME_PRESETS.find((p) => p.id === themePreset) || THEME_PRESETS[0];
+    const filteredFonts =
+      fontFilter === 'all'
+        ? SITE_FONT_OPTIONS
+        : SITE_FONT_OPTIONS.filter((f) => f.category === fontFilter);
+
+    const handleResetUi = () => {
+      resetAppearance();
+      pushToast({
+        title: 'UI সেটিংস রিসেট হয়েছে',
+        description: 'ডিফল্ট অ্যাপেক্স একাডেমি (নেভি ও অরেঞ্জ) থিম, Hind Siliguri ফন্ট এবং ১০০% সাইজ পুনরুদ্ধার করা হয়েছে।',
+        variant: 'info',
+      });
+    };
+
     return (
-      <div className="max-w-2xl space-y-6">
-        <Card className="p-5">
-          <h1 className="font-display text-2xl font-bold gold-text-gradient">সিস্টেম সেটিংস</h1>
-          <p className="mt-1 text-base text-[#B8C0CE]">
-            QuestionBank এখন Supabase Authentication, PostgreSQL, Row Level Security এবং private Storage ব্যবহার করে।
-          </p>
+      <div className="space-y-6">
+        {/* Header */}
+        <Card className="p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-bold gold-text-gradient">
+              UI থিম, ফন্ট ও সিস্টেম সেটিংস
+            </h1>
+            <p className="mt-1 text-base text-[#B8C0CE]">
+              এখান থেকে পুরো ওয়েবসাইটের কালার থিম, ডার্ক/লাইট মোড, ডাউনলোডকৃত বাংলা ও ওয়েব ফন্ট এবং ফন্ট সাইজ সাথে সাথে পরিবর্তন করে দেখতে পারবেন।
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleResetUi}>
+            <RotateCcw className="h-4 w-4" />
+            <span>ডিফল্ট রিসেট</span>
+          </Button>
         </Card>
 
-        <Card className="p-6 space-y-3">
+        {/* Live Preview Strip */}
+        <Card className="p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-[#EAC779]" />
+              <h2 className="font-display text-lg font-bold text-[#F5EFE2]">লাইভ প্রিভিউ (তাৎক্ষণিক পরিবর্তন)</h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[#B8C0CE]">
+              <span className="rounded-md border border-[#D4A853]/30 bg-[#0A0D12] px-2.5 py-1">
+                মোড: <strong className="text-[#EAC779]">{theme === 'dark' ? 'ডার্ক' : 'লাইট'}</strong>
+              </span>
+              <span className="rounded-md border border-[#D4A853]/30 bg-[#0A0D12] px-2.5 py-1">
+                থিম: <strong className="text-[#EAC779]">{activePreset.nameBn}</strong>
+              </span>
+              <span className="rounded-md border border-[#D4A853]/30 bg-[#0A0D12] px-2.5 py-1">
+                ফন্ট: <strong className="text-[#EAC779]">{activeFont.name}</strong>
+              </span>
+              <span className="rounded-md border border-[#D4A853]/30 bg-[#0A0D12] px-2.5 py-1 tabular-nums">
+                সাইজ: <strong className="text-[#EAC779]">{toBanglaDigits(Math.round(fontSizeScale * 100))}%</strong>
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[#D4A853]/25 bg-[#0A0D12] p-5 space-y-3">
+            <p className="text-xs font-semibold tracking-wide text-[#EAC779]">নমুনা কার্ড ও টাইপোগ্রাফি</p>
+            <h3 className="font-display text-xl font-bold text-[#F5EFE2]">
+              শ্রেণি ১–১২ একাডেমিক ও অ্যাডমিশন প্রশ্নপত্র তৈরি — ২০২৬
+            </h3>
+            <p className="text-sm text-[#C2C8D3] leading-relaxed">
+              এই অনুচ্ছেদটি আপনার নির্বাচিত ফন্ট ({activeFont.name}) এবং ফন্ট সাইজে প্রদর্শিত হচ্ছে। নিচের ছোট টেক্সট, বাটন ও ব্যাজ দেখে সহজেই পাঠযোগ্যতা যাচাই করুন।
+            </p>
+            <p className="text-xs text-[#9DA6B5]">
+              ছোট টেক্সট নমুনা: ঢাকা বোর্ড ২০২৫ • গণিত • অধ্যায় ১: বাস্তব সংখ্যা • সময়: ৬০ মিনিট • পূর্ণমান: ৫০
+            </p>
+            <div className="flex flex-wrap items-center gap-2.5 pt-1">
+              <Button size="sm">প্রশ্নপত্র তৈরি করুন</Button>
+              <Button variant="outline" size="sm">প্রিভিউ দেখুন</Button>
+              <StatusTag tone="active" label="সক্রিয় থিম" />
+              <StatusTag tone="pending" label="নমুনা ট্যাগ" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Section 1: Color Mode & Custom Themes */}
+        <Card className="p-6 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <Palette className="h-5 w-5 text-[#EAC779]" />
+              <div>
+                <h2 className="font-display text-lg font-bold text-[#F5EFE2]">১. কালার মোড ও কাস্টম থিম</h2>
+                <p className="text-xs text-[#9DA6B5]">পছন্দের যেকোনো থিমে ক্লিক করলেই পুরো ওয়েবসাইটে তাৎক্ষণিকভাবে প্রয়োগ হবে।</p>
+              </div>
+            </div>
+
+            {/* Dark / Light Mode Toggle */}
+            <div className="inline-flex rounded-lg border border-[#D4A853]/30 bg-[#0A0D12] p-1">
+              <button
+                type="button"
+                onClick={() => setTheme('dark')}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-sm font-semibold transition-colors cursor-pointer ${
+                  theme === 'dark'
+                    ? 'gold-btn'
+                    : 'text-[#B8C0CE] hover:text-[#F5EFE2]'
+                }`}
+              >
+                <Moon className="h-4 w-4" />
+                <span>ডার্ক মোড</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme('light')}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-sm font-semibold transition-colors cursor-pointer ${
+                  theme === 'light'
+                    ? 'gold-btn'
+                    : 'text-[#B8C0CE] hover:text-[#F5EFE2]'
+                }`}
+              >
+                <Sun className="h-4 w-4" />
+                <span>লাইট মোড</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+            {THEME_PRESETS.map((preset) => {
+              const isSelected = themePreset === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => {
+                    setThemePreset(preset.id);
+                    pushToast({
+                      title: `${preset.nameBn} চালু হয়েছে`,
+                      description: 'নতুন কালার থিম পুরো ওয়েবসাইটে প্রয়োগ করা হয়েছে।',
+                      variant: 'success',
+                    });
+                  }}
+                  className={`group relative rounded-xl border p-4 text-left transition-all cursor-pointer ${
+                    isSelected
+                      ? 'border-[#EAC779] bg-[#D4A853]/12 shadow-md'
+                      : 'border-[#D4A853]/25 bg-[#0A0D12] hover:border-[#EAC779]/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-6 w-6 rounded-full border border-white/25 shadow-sm"
+                        style={{ background: preset.swatchPrimary }}
+                      />
+                      <span
+                        className="h-5 w-5 -ml-3 rounded-full border border-white/25 shadow-sm"
+                        style={{ background: preset.swatchSecondary }}
+                      />
+                      <span
+                        className="h-5 w-5 rounded-md border border-white/20"
+                        style={{ background: theme === 'light' ? preset.swatchBgLight : preset.swatchBgDark }}
+                        title="ব্যাকগ্রাউন্ড প্রিভিউ"
+                      />
+                    </div>
+                    {isSelected && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-[#D4A853] px-2 py-0.5 text-xs font-bold text-[#090B0E]">
+                        <Check className="h-3.5 w-3.5" />
+                        নির্বাচিত
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-3 text-base font-bold text-[#F5EFE2]">{preset.nameBn}</p>
+                  <p className="mt-1 text-xs text-[#9DA6B5] leading-relaxed">{preset.descriptionBn}</p>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* Section 2: Global Font Size Control */}
+        <Card className="p-6 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <Type className="h-5 w-5 text-[#EAC779]" />
+              <div>
+                <h2 className="font-display text-lg font-bold text-[#F5EFE2]">২. গ্লোবাল ফন্ট সাইজ কন্ট্রোল</h2>
+                <p className="text-xs text-[#9DA6B5]">
+                  পুরো ওয়েবসাইটের সব হেডিং, প্যারাগ্রাফ ও ছোট টেক্সট একসাথে বড় বা ছোট করে দেখুন।
+                </p>
+              </div>
+            </div>
+            <span className="rounded-lg border border-[#D4A853]/35 bg-[#0A0D12] px-3 py-1.5 text-sm font-bold text-[#EAC779] tabular-nums">
+              বর্তমান স্কেল: {toBanglaDigits(Math.round(fontSizeScale * 100))}% ({toBanglaDigits((16 * fontSizeScale).toFixed(1))}px)
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-semibold text-[#9DA6B5] shrink-0">ছোট (৯০%)</span>
+              <input
+                type="range"
+                min={0.9}
+                max={1.25}
+                step={0.02}
+                value={fontSizeScale}
+                onChange={(e) => setFontSizeScale(Number(e.target.value))}
+                aria-label="ফন্ট সাইজ স্কেল"
+                className="w-full accent-[#D4A853] cursor-pointer"
+              />
+              <span className="text-base font-semibold text-[#F5EFE2] shrink-0">বড় (১২৫%)</span>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {FONT_SIZE_PRESETS.map((preset) => {
+                const active = Math.abs(fontSizeScale - preset.scale) < 0.015;
+                return (
+                  <button
+                    key={preset.labelBn}
+                    type="button"
+                    onClick={() => setFontSizeScale(preset.scale)}
+                    className={`rounded-lg border px-3.5 py-2 text-sm font-semibold transition-colors cursor-pointer ${
+                      active
+                        ? 'gold-btn'
+                        : 'border-[#D4A853]/30 bg-[#0A0D12] text-[#C2C8D3] hover:border-[#EAC779]'
+                    }`}
+                  >
+                    {preset.labelBn} ({preset.pctLabel})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+
+        {/* Section 3: Locally Downloaded & Bundled Website Fonts */}
+        <Card className="p-6 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg font-bold text-[#F5EFE2]">
+                ৩. ডাউনলোডকৃত বাংলা ও জনপ্রিয় ওয়েব ফন্ট ({toBanglaDigits(SITE_FONT_OPTIONS.length)}টি ফন্ট)
+              </h2>
+              <p className="mt-0.5 text-xs text-[#9DA6B5]">
+                সবগুলো ফন্ট আপনার ওয়েবসাইটে লোকালি ডাউনলোড ও বান্ডেল করা হয়েছে — ক্লিক করলেই পুরো সাইটের ফন্ট পরিবর্তন হবে।
+              </p>
+            </div>
+
+            <div className="inline-flex rounded-lg border border-[#D4A853]/30 bg-[#0A0D12] p-1 text-xs font-semibold">
+              {[
+                { id: 'all' as const, label: 'সব ফন্ট' },
+                { id: 'bangla' as const, label: 'বাংলা ফন্ট (৭টি)' },
+                { id: 'global' as const, label: 'গ্লোবাল ওয়েব ফন্ট (৪টি)' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setFontFilter(tab.id)}
+                  className={`rounded-md px-3 py-1.5 transition-colors cursor-pointer ${
+                    fontFilter === tab.id ? 'gold-btn' : 'text-[#B8C0CE] hover:text-[#F5EFE2]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+            {filteredFonts.map((font) => {
+              const isSelected = fontFamilyId === font.id;
+              return (
+                <button
+                  key={font.id}
+                  type="button"
+                  onClick={() => {
+                    setFontFamilyId(font.id);
+                    pushToast({
+                      title: `${font.name} ফন্ট সক্রিয় হয়েছে`,
+                      description: 'পুরো ওয়েবসাইটের ফন্ট আপডেট করা হয়েছে।',
+                      variant: 'success',
+                    });
+                  }}
+                  className={`rounded-xl border p-4 text-left transition-all cursor-pointer ${
+                    isSelected
+                      ? 'border-[#EAC779] bg-[#D4A853]/12 shadow-md'
+                      : 'border-[#D4A853]/25 bg-[#0A0D12] hover:border-[#EAC779]/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-base font-bold text-[#F5EFE2]">{font.name}</p>
+                      <p className="text-xs text-[#9DA6B5]">{font.labelBn}</p>
+                    </div>
+                    <span
+                      className={`rounded-md px-2.5 py-1 text-xs font-semibold shrink-0 ${
+                        isSelected
+                          ? 'bg-[#D4A853] text-[#090B0E]'
+                          : 'border border-[#D4A853]/30 text-[#EAC779]'
+                      }`}
+                    >
+                      {isSelected ? 'ব্যবহৃত হচ্ছে' : 'ব্যবহার করুন'}
+                    </span>
+                  </div>
+                  <p
+                    className="mt-3 rounded-lg border border-[#D4A853]/15 bg-[#12161F] px-3 py-2.5 text-base text-[#F5EFE2]"
+                    style={{ fontFamily: font.cssFamily }}
+                  >
+                    {font.sampleBn}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* System / Database Info Card */}
+        <Card className="p-6 space-y-2.5">
           <h2 className="font-display text-lg font-semibold text-[#F5EFE2]">ডাটাবেস ও সুরক্ষা</h2>
           <p className="text-sm text-[#B8C0CE] leading-relaxed">
-            প্রশ্ন, সাবস্ক্রিপশন, পেমেন্ট, ব্যবহারকারী এবং সংরক্ষিত প্রশ্নপত্র Supabase-এ রাখা হয়। শ্রেণিভিত্তিক প্রবেশাধিকার, অ্যাডমিন ভূমিকা এবং ব্যক্তিগত ফাইলের অনুমতি ডাটাবেস নীতিমালায় যাচাই হয়।
+            প্রশ্ন, সাবস্ক্রিপশন, পেমেন্ট, ব্যবহারকারী এবং সংরক্ষিত প্রশ্নপত্র Supabase PostgreSQL ও লোকাল প্রোটোটাইপ স্টোরেজে সংরক্ষিত থাকে। উপরের UI থিম, ফন্ট এবং ফন্ট সাইজ পরিবর্তন আপনার ব্রাউজারে তাৎক্ষণিকভাবে সংরক্ষিত হয়।
           </p>
         </Card>
       </div>

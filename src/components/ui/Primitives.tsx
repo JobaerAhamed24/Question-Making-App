@@ -71,7 +71,7 @@ export function Card({
 
 interface FormFieldProps {
   label: string;
-  htmlFor: string;
+  htmlFor?: string;
   error?: string;
   hint?: string;
   required?: boolean;
